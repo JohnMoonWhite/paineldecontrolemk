@@ -25,26 +25,20 @@ export function DashboardView({ snapshot, error, refreshing, updatedAt, now, ref
 
   return <div className="dashboard-layout">
     <a className="skip-link" href="#overview">Ir para o conteúdo</a>
-    <aside className="sidebar">
+    <header className="masthead">
       <Brand compact />
-      <p className="sidebar-label">Seu espaço de gestão</p>
       <nav aria-label="Navegação principal">
         <a className="nav-link nav-link--primary" href="#overview"><Icon name="overview" />Visão geral</a>
         <a className="nav-link" href="#projects"><Icon name="projects" />Projetos<span>{sources.length || '—'}</span></a>
         <a className="nav-link" href="#subscriptions"><Icon name="subscriptions" />Assinaturas</a>
       </nav>
-      <div className="sidebar-bottom">
-        <div className="protected-access"><Icon name="shield" /><div>Acesso protegido<small>Verificação em duas etapas</small></div></div>
-        <button className="nav-link signout-button" onClick={onSignOut} type="button"><Icon name="logout" />Sair da conta</button>
-        <p className="sidebar-signature">MKHUB<span>Softwares e sistemas inteligentes</span></p>
-      </div>
-    </aside>
+      <button className="nav-link signout-button" onClick={onSignOut} type="button"><Icon name="logout" /><span>Sair da conta</span></button>
+    </header>
     <main className="dashboard-main">
-      <header className="topbar"><div><span className="breadcrumb">Painel de controle</span><span className="topbar-divider">/</span><span>Visão geral</span></div><span className="read-only"><span />Somente leitura</span></header>
       <div className="dashboard-content">
         <section id="overview" className="overview-section">
-          <div className="dashboard-header"><div><p className="date-label">{now.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p><h1>Resumo executivo<span>.</span></h1><p className="dashboard-lead">O essencial dos seus projetos, em um só lugar.</p></div><button className="secondary-button refresh-button" disabled={refreshing} onClick={() => void refresh()} type="button"><Icon name="refresh" className={refreshing ? 'spinning' : ''} />{refreshing ? 'Atualizando…' : 'Atualizar agora'}</button></div>
-          <div className="overview-toolbar"><label className="source-filter">Projeto<select value={sourceId} onChange={event => setSourceId(event.target.value)}><option value="all">Todos os projetos</option>{sources.map(source => <option key={source.id} value={source.id}>{source.name}</option>)}</select></label><p className="update-status" aria-live="polite">{updatedAt ? `Painel consultado às ${updatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Aguardando consulta'}<span>Atualização automática a cada 5 minutos</span></p></div>
+          <div className="dashboard-header"><div className="executive-heading"><p className="date-label">{now.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p><h1>Resumo executivo</h1><p className="dashboard-lead">Seus projetos. A visão completa.</p><span className="read-only"><Icon name="shield" />Consulta às origens somente para leitura</span></div><div className="executive-brand"><img src="/brand/mkhub.png" alt="MKHUB — Controle, gestão e resultados" width="1536" height="1024" /></div></div>
+          <div className="overview-toolbar"><label className="source-filter">Projeto<select value={sourceId} onChange={event => setSourceId(event.target.value)}><option value="all">Todos os projetos</option>{sources.map(source => <option key={source.id} value={source.id}>{source.name}</option>)}</select></label><div className="refresh-controls"><p className="update-status" aria-live="polite">{updatedAt ? `Painel consultado às ${updatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Aguardando consulta'}<span>Atualização a cada 5 minutos</span></p><button className="secondary-button refresh-button" disabled={refreshing} onClick={() => void refresh()} type="button"><Icon name="refresh" className={refreshing ? 'spinning' : ''} />{refreshing ? 'Atualizando…' : 'Atualizar agora'}</button></div></div>
           {error ? <div className="notice notice--error" role="alert"><Icon name="alert" /><div><strong>Não foi possível atualizar</strong><p>{error}</p>{snapshot ? <p>Os dados abaixo são da última consulta bem-sucedida.</p> : null}</div></div> : null}
           {snapshot && needsAttention ? <div className="notice"><Icon name="alert" /><div><strong>{hasData ? 'Alguns projetos precisam de atenção' : 'Aguardando a primeira coleta de dados'}</strong><p>{hasData ? 'Confira a última sincronização de cada projeto antes de tomar uma decisão.' : 'A conexão foi cadastrada, mas ainda não há uma sincronização bem-sucedida. Os indicadores ficarão disponíveis após a coleta.'}</p></div><a href="#projects" aria-label="Ver estado dos projetos"><Icon name="arrow" /></a></div> : null}
           <SubscriptionHealth health={health} available={hasData} loading={!snapshot && !error} />
