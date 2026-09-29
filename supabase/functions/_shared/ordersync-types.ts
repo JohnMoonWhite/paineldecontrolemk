@@ -11,7 +11,7 @@ export type OrderSyncProfile = {
 
 export type OrderSyncOrganization = {
   id: string
-  name: string | null
+  nome: string | null
   plano: string | null
   subscription_status: string | null
   trial_ends_at?: string | null
@@ -22,14 +22,14 @@ export type OrderSyncOrganization = {
 }
 
 export type OrderSyncOrganizationMember = {
-  organization_id: string
+  org_id: string
   user_id: string
   status: string | null
 }
 
 export type OrderSyncPixPayment = {
   user_id: string | null
-  organization_id: string | null
+  org_id: string | null
   status: string | null
   plan: string | null
   amount_cents: number | null

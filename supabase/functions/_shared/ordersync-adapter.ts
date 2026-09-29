@@ -41,7 +41,7 @@ function normalizeOrganization(
     {
       externalId: organization.id,
       entityKind: 'organization',
-      displayName: organization.name,
+      displayName: organization.nome,
       plan: organization.plano,
       status: organization.subscription_status,
       periodEndAt: organization.current_period_end,
@@ -109,8 +109,8 @@ function buildPaidPaymentIndex(payments: OrderSyncPixPayment[]): Map<string, Ord
       continue
     }
 
-    const key = payment.organization_id
-      ? 'organization:' + payment.organization_id
+    const key = payment.org_id
+      ? 'organization:' + payment.org_id
       : payment.user_id
         ? 'individual:' + payment.user_id
         : null

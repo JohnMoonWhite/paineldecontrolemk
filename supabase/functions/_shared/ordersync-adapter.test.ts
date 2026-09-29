@@ -10,7 +10,7 @@ describe('normalizeOrderSync', () => {
         organizations: [
           {
             id: 'org-1',
-            name: 'Oficina Norte',
+            nome: 'Oficina Norte',
             plano: 'Pro',
             subscription_status: 'active',
             current_period_end: '2026-10-20T00:00:00.000Z',
@@ -43,7 +43,7 @@ describe('normalizeOrderSync', () => {
     const facts = normalizeOrderSync(
       {
         organizations: [],
-        organizationMembers: [{ organization_id: 'org-1', user_id: 'user-1', status: 'active' }],
+        organizationMembers: [{ org_id: 'org-1', user_id: 'user-1', status: 'ativo' }],
         profiles: [
           {
             id: 'user-1',
@@ -141,7 +141,7 @@ describe('normalizeOrderSync', () => {
         pixPayments: [
           {
             user_id: 'user-5',
-            organization_id: null,
+            org_id: null,
             status: 'paid',
             plan: 'Pix Pro',
             amount_cents: 11960,
