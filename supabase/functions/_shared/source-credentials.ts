@@ -1,8 +1,7 @@
 export type ReadEnvironment = (name: string) => string | undefined
 
 export type SourceCredentials = {
-  url: string
-  key: string
+  databaseUrl: string
 }
 
 const readDenoEnvironment: ReadEnvironment = (name) => Deno.env.get(name)
@@ -10,21 +9,28 @@ const readDenoEnvironment: ReadEnvironment = (name) => Deno.env.get(name)
 export function resolveOrderSyncCredentials(
   readEnvironment: ReadEnvironment = readDenoEnvironment,
 ): SourceCredentials {
-  const url = readRequired(readEnvironment, 'ORDERSYNC_SUPABASE_URL')
-  const key = readRequired(readEnvironment, 'ORDERSYNC_READONLY_KEY')
+  const databaseUrl = readRequired(readEnvironment, 'ORDERSYNC_DATABASE_URL')
 
   let parsedUrl: URL
   try {
-    parsedUrl = new URL(url)
+    parsedUrl = new URL(databaseUrl)
   } catch {
-    throw new Error('ORDERSYNC_SUPABASE_URL must be a valid HTTPS URL')
+    throw new Error('ORDERSYNC_DATABASE_URL must be a valid Postgres URL')
   }
 
-  if (parsedUrl.protocol !== 'https:' || !parsedUrl.hostname.endsWith('.supabase.co')) {
-    throw new Error('ORDERSYNC_SUPABASE_URL must be an HTTPS Supabase URL')
+  if (parsedUrl.protocol !== 'postgresql:' && parsedUrl.protocol !== 'postgres:') {
+    throw new Error('ORDERSYNC_DATABASE_URL must be a valid Postgres URL')
   }
 
-  return { url: parsedUrl.origin, key }
+  if (!parsedUrl.hostname.endsWith('.pooler.supabase.com') || parsedUrl.port !== '6543') {
+    throw new Error('ORDERSYNC_DATABASE_URL must use the Supabase transaction-pooler')
+  }
+
+  if (!parsedUrl.username || !parsedUrl.password || parsedUrl.pathname !== '/postgres') {
+    throw new Error('ORDERSYNC_DATABASE_URL is incomplete')
+  }
+
+  return { databaseUrl }
 }
 
 function readRequired(readEnvironment: ReadEnvironment, name: string): string {

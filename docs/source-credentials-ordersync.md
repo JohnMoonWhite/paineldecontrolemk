@@ -4,26 +4,26 @@ O painel acessa o projeto OrdemSync somente pelo servidor. O navegador nunca rec
 
 ## Escopo permitido
 
-Crie uma credencial permanente limitada a leitura dos dados necessários:
+Crie uma credencial permanente limitada a leitura dos dados necessários. Ela deve usar o **Transaction pooler** do Supabase, que é adequado para uma Edge Function.
 
-- \`profiles\`: \`id,nome,plano,subscription_status,trial_ends_at,current_period_end,cancel_at_period_end,payment_provider\`
-- \`organizations\`: \`id,name,plano,subscription_status,current_period_end,trial_ends_at,cancel_at_period_end,payment_provider,seats\`
-- \`organization_members\`: \`organization_id,user_id,status\`
-- \`pix_payments\`: \`user_id,organization_id,status,plan,amount_cents,currency,access_ends_at,paid_at\`
+- `profiles`: `id,nome,plano,subscription_status,trial_ends_at,current_period_end,cancel_at_period_end,payment_provider`
+- `organizations`: `id,nome,plano,subscription_status,current_period_end,trial_ends_at,payment_provider,seats`
+- `organization_members`: `org_id,user_id,status`
+- `pix_payments`: `user_id,org_id,status,plan,amount_cents,access_ends_at,paid_at`
 
 Não conceda escrita. Não altere tabelas, dados, políticas RLS, funções, gatilhos nem qualquer comportamento do OrdemSync.
 
 ## Configuração no painel central
 
-Depois de criada a credencial de somente leitura, guarde os valores nos segredos das Edge Functions do projeto central \`egagpdfcyazjuzeofbbl\`:
+Depois de criada a credencial de somente leitura, guarde a URL completa como um segredo das Edge Functions do projeto central `egagpdfcyazjuzeofbbl`:
 
-\`\`\`powershell
-supabase secrets set --project-ref egagpdfcyazjuzeofbbl ORDERSYNC_SUPABASE_URL="https://qggkcflrmusfvjqsfhsf.supabase.co"
-supabase secrets set --project-ref egagpdfcyazjuzeofbbl ORDERSYNC_READONLY_KEY="<credencial-de-leitura>"
-\`\`\`
+| Campo | Valor |
+| --- | --- |
+| Key | `ORDERSYNC_DATABASE_URL` |
+| Value | a URI completa do Transaction pooler para `monitoring_ordersync_reader` |
 
-Use um arquivo local ignorado pelo Git ou o painel de segredos do Supabase para fornecer a chave. Nunca cole a credencial em código, migrações SQL, variáveis \`VITE_\`, logs ou mensagens.
+Use o painel de segredos do Supabase. Nunca cole a credencial em código, migrações SQL, variáveis `VITE_`, logs ou mensagens. Caso a senha possua caracteres especiais, ela precisa estar codificada na URL.
 
 ## Rotação
 
-Se a credencial for exposta, revogue-a no OrdemSync, crie outra com o mesmo escopo de leitura e atualize somente o segredo \`ORDERSYNC_READONLY_KEY\` do projeto central. Não é necessário reenviar o PWA.
+Se a credencial for exposta, revogue-a no OrdemSync, crie outra com o mesmo escopo de leitura e atualize somente o segredo `ORDERSYNC_DATABASE_URL` do projeto central. Não é necessário reenviar o PWA.

@@ -45,6 +45,6 @@ describe('executeOrderSync', () => {
 
     expect(result).toEqual({ status: 'failed' })
     expect(replaceSnapshot).not.toHaveBeenCalled()
-    expect(recordFailure).toHaveBeenCalledWith('source unavailable')
+    expect(recordFailure).toHaveBeenCalledWith('Unable to synchronize approved OrdemSync data')
   })
 })

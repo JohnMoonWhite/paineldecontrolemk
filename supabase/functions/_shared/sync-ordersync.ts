@@ -55,6 +55,6 @@ function toSnapshotFact(fact: NormalizedSubscriptionFact): SnapshotFact {
   }
 }
 
-function errorSummary(error: unknown): string {
-  return error instanceof Error ? error.message.slice(0, 500) : 'Unknown source synchronization error'
+function errorSummary(_error: unknown): string {
+  return 'Unable to synchronize approved OrdemSync data'
 }
