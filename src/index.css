@@ -29,14 +29,20 @@ button:focus-visible {
 .access-shell {
   display: grid;
   min-height: 100svh;
-  grid-template-columns: minmax(0, 1fr) minmax(16rem, 40%);
-  background: #f7f8f4;
+  place-items: center;
+  padding: clamp(1.25rem, 4vw, 4rem);
+  background:
+    radial-gradient(circle at 88% 12%, #d9e9d7 0 8rem, transparent 8.1rem),
+    #f7f8f4;
 }
 
-.access-panel {
-  align-self: center;
-  max-width: 42rem;
-  padding: clamp(2rem, 8vw, 8rem);
+.auth-card {
+  width: min(100%, 34rem);
+  padding: clamp(2rem, 7vw, 5rem);
+  background: rgb(255 255 255 / 82%);
+  border: 1px solid #d9e2dc;
+  border-radius: 1.25rem;
+  box-shadow: 0 1.5rem 4rem rgb(18 63 59 / 10%);
 }
 
 .product-mark {
@@ -66,6 +72,34 @@ h1 {
   line-height: 1.65;
 }
 
+.auth-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 0.45rem;
+  color: #2d6961;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.auth-form input {
+  width: 100%;
+  border: 1px solid #b9c9c2;
+  border-radius: 0.5rem;
+  padding: 0.8rem 0.9rem;
+  color: #163532;
+  background: #fff;
+}
+
+.auth-form input:focus {
+  border-color: #2d6961;
+  outline: 3px solid rgb(45 105 97 / 16%);
+}
+
 .access-button {
   border: 0;
   border-radius: 0.35rem;
@@ -80,6 +114,21 @@ h1 {
   margin: 1.4rem 0 0;
   color: #71837e;
   font-size: 0.86rem;
+}
+
+.form-error {
+  margin: 0;
+  color: #9c2f2f;
+  font-size: 0.9rem;
+}
+
+.mfa-qr {
+  width: min(100%, 16rem);
+  margin: 0 auto;
+  padding: 0.75rem;
+  background: #fff;
+  border: 1px solid #d9e2dc;
+  border-radius: 0.75rem;
 }
 
 .access-structure {
@@ -102,23 +151,10 @@ h1 {
 
 @media (max-width: 720px) {
   .access-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .access-panel {
-    padding: 2rem 1.5rem 4rem;
+    padding: 1rem;
   }
 
   .product-mark {
-    margin-bottom: 4rem;
-  }
-
-  .access-structure {
-    min-height: 7rem;
-    grid-template-columns: repeat(4, 1fr);
-  }
-
-  .access-structure span {
-    min-height: 7rem;
+    margin-bottom: 2.5rem;
   }
 }
