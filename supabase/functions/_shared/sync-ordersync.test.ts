@@ -47,4 +47,36 @@ describe('executeOrderSync', () => {
     expect(replaceSnapshot).not.toHaveBeenCalled()
     expect(recordFailure).toHaveBeenCalledWith('Unable to synchronize approved OrdemSync data')
   })
+
+  it('records a safe source-authentication diagnosis without exposing the connection detail', async () => {
+    const replaceSnapshot = vi.fn()
+    const recordFailure = vi.fn().mockResolvedValue(undefined)
+
+    await executeOrderSync({
+      observedAt: '2026-09-29T00:00:00.000Z',
+      readRecords: async () => {
+        throw new Error('ORDERSYNC_SOURCE_AUTH_FAILED: password authentication failed for role reader')
+      },
+      replaceSnapshot,
+      recordFailure,
+    })
+
+    expect(recordFailure).toHaveBeenCalledWith('OrdemSync reader authentication failed')
+    expect(recordFailure).not.toHaveBeenCalledWith(expect.stringContaining('password'))
+  })
+
+  it('records a safe central-write diagnosis', async () => {
+    const recordFailure = vi.fn().mockResolvedValue(undefined)
+
+    await executeOrderSync({
+      observedAt: '2026-09-29T00:00:00.000Z',
+      readRecords: async () => ({ organizations: [], organizationMembers: [], profiles: [], pixPayments: [] }),
+      replaceSnapshot: async () => {
+        throw new Error('MONITORING_CENTRAL_WRITE_FAILED')
+      },
+      recordFailure,
+    })
+
+    expect(recordFailure).toHaveBeenCalledWith('Central monitoring database write failed')
+  })
 })

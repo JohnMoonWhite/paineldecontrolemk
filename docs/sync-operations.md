@@ -13,13 +13,13 @@ Em **Edge Functions → Secrets**, no projeto `egagpdfcyazjuzeofbbl`, mantenha:
 | Key | Finalidade |
 | --- | --- |
 | `ORDERSYNC_DATABASE_URL` | conexão somente leitura do OrdemSync |
-| `MONITORING_SCHEDULER_KEY` | valor da chave secreta central chamada `monitoring-scheduler` |
+| `MONITORING_SCHEDULER_KEY` | valor da chave secreta central chamada `monitoring_scheduler` |
 
-Crie a chave `monitoring-scheduler` em **Settings → API Keys** como uma chave secreta. Copie-a diretamente para `MONITORING_SCHEDULER_KEY`; ela nunca deve ir para o navegador, Git, SQL ou conversa.
+Crie a chave `monitoring_scheduler` em **Settings → API Keys** como uma chave secreta. Copie-a diretamente para `MONITORING_SCHEDULER_KEY`; ela nunca deve ir para o navegador, Git, SQL ou conversa.
 
 ## Agendamento de cinco minutos
 
-Após publicar `sync-ordersync`, crie um Job em **Cron / Jobs** no projeto central para executá-la a cada cinco minutos. O pedido deve enviar o valor de `monitoring-scheduler` somente no cabeçalho `apikey`.
+Após publicar `sync-ordersync`, crie um Job em **Cron / Jobs** no projeto central para executá-la a cada cinco minutos. O pedido deve enviar o valor de `monitoring_scheduler` somente no cabeçalho `apikey`.
 
 O Job não deve apontar para o OrdemSync nem carregar credenciais do projeto fonte. Ele chama somente a função central `sync-ordersync`.
 

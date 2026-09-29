@@ -55,6 +55,24 @@ function toSnapshotFact(fact: NormalizedSubscriptionFact): SnapshotFact {
   }
 }
 
-function errorSummary(_error: unknown): string {
+function errorSummary(error: unknown): string {
+  if (error instanceof Error) {
+    if (error.message.startsWith('ORDERSYNC_SOURCE_AUTH_FAILED')) {
+      return 'OrdemSync reader authentication failed'
+    }
+
+    if (error.message.startsWith('ORDERSYNC_SOURCE_PERMISSION_FAILED')) {
+      return 'OrdemSync reader lacks an approved read permission'
+    }
+
+    if (error.message.startsWith('ORDERSYNC_SOURCE_CONFIG_FAILED')) {
+      return 'OrdemSync reader configuration is invalid'
+    }
+
+    if (error.message.startsWith('MONITORING_CENTRAL_WRITE_FAILED')) {
+      return 'Central monitoring database write failed'
+    }
+  }
+
   return 'Unable to synchronize approved OrdemSync data'
 }

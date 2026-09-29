@@ -30,7 +30,7 @@ async function synchronizeOrderSync() {
       })
 
       if (error || typeof data !== 'number') {
-        throw new Error('Central snapshot replacement failed')
+        throw new Error('MONITORING_CENTRAL_WRITE_FAILED')
       }
 
       return data
@@ -42,14 +42,20 @@ async function synchronizeOrderSync() {
       })
 
       if (error) {
-        throw new Error('Central failure recording failed')
+        throw new Error('MONITORING_CENTRAL_WRITE_FAILED')
       }
     },
   })
 }
 
 async function readOrderSyncDatabase() {
-  const { databaseUrl } = resolveOrderSyncCredentials()
+  let databaseUrl: string
+  try {
+    databaseUrl = resolveOrderSyncCredentials().databaseUrl
+  } catch {
+    throw new Error('ORDERSYNC_SOURCE_CONFIG_FAILED')
+  }
+
   const sql = postgres(databaseUrl, {
     connect_timeout: 10,
     idle_timeout: 5,
@@ -62,9 +68,31 @@ async function readOrderSyncDatabase() {
       const rows = await sql.unsafe(statement)
       return Array.from(rows) as Record<string, unknown>[]
     })
+  } catch (error) {
+    throw classifySourceReadError(error)
   } finally {
-    await sql.end({ timeout: 5 })
+    try {
+      await sql.end({ timeout: 5 })
+    } catch {
+      // The source query result or error is authoritative; connection teardown is best effort.
+    }
   }
+}
+
+function classifySourceReadError(error: unknown): Error {
+  const code = typeof error === 'object' && error !== null && 'code' in error
+    ? String(error.code)
+    : ''
+
+  if (code === '28P01' || code === '28000') {
+    return new Error('ORDERSYNC_SOURCE_AUTH_FAILED')
+  }
+
+  if (code === '42501') {
+    return new Error('ORDERSYNC_SOURCE_PERMISSION_FAILED')
+  }
+
+  return new Error('ORDERSYNC_SOURCE_READ_FAILED')
 }
 
 function createCentralClient() {
