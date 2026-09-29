@@ -1,0 +1,62 @@
+export type OrderSyncProfile = {
+  id: string
+  nome: string | null
+  plano: string | null
+  subscription_status: string | null
+  trial_ends_at?: string | null
+  current_period_end?: string | null
+  cancel_at_period_end?: boolean | null
+  payment_provider?: string | null
+}
+
+export type OrderSyncOrganization = {
+  id: string
+  name: string | null
+  plano: string | null
+  subscription_status: string | null
+  trial_ends_at?: string | null
+  current_period_end?: string | null
+  cancel_at_period_end?: boolean | null
+  payment_provider?: string | null
+  seats?: number | null
+}
+
+export type OrderSyncOrganizationMember = {
+  organization_id: string
+  user_id: string
+  status: string | null
+}
+
+export type OrderSyncPixPayment = {
+  user_id: string | null
+  organization_id: string | null
+  status: string | null
+  plan: string | null
+  amount_cents: number | null
+  currency: string | null
+  access_ends_at: string | null
+  paid_at: string | null
+}
+
+export type OrderSyncRecords = {
+  profiles: OrderSyncProfile[]
+  organizations: OrderSyncOrganization[]
+  organizationMembers: OrderSyncOrganizationMember[]
+  pixPayments: OrderSyncPixPayment[]
+}
+
+export type NormalizedSubscriptionFact = {
+  externalId: string
+  entityKind: 'individual' | 'organization'
+  displayName: string | null
+  plan: string | null
+  status: string
+  periodEndAt: string | null
+  trialEndAt: string | null
+  cancelAtPeriodEnd: boolean | null
+  seatCount: number | null
+  amountCents: number | null
+  currency: string | null
+  provider: string | null
+  observedAt: string
+}

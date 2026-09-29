@@ -1,0 +1,170 @@
+import { describe, expect, it } from 'vitest'
+import { normalizeOrderSync } from './ordersync-adapter'
+
+const observedAt = '2026-09-29T00:00:00.000Z'
+
+describe('normalizeOrderSync', () => {
+  it('keeps an organization subscription with its operational details', () => {
+    const facts = normalizeOrderSync(
+      {
+        organizations: [
+          {
+            id: 'org-1',
+            name: 'Oficina Norte',
+            plano: 'Pro',
+            subscription_status: 'active',
+            current_period_end: '2026-10-20T00:00:00.000Z',
+            trial_ends_at: null,
+            cancel_at_period_end: false,
+            payment_provider: 'stripe',
+            seats: 8,
+          },
+        ],
+        organizationMembers: [],
+        profiles: [],
+        pixPayments: [],
+      },
+      observedAt,
+    )
+
+    expect(facts).toEqual([
+      expect.objectContaining({
+        externalId: 'org-1',
+        entityKind: 'organization',
+        displayName: 'Oficina Norte',
+        plan: 'Pro',
+        seatCount: 8,
+        provider: 'stripe',
+      }),
+    ])
+  })
+
+  it('does not emit an individual fact for an active organization member', () => {
+    const facts = normalizeOrderSync(
+      {
+        organizations: [],
+        organizationMembers: [{ organization_id: 'org-1', user_id: 'user-1', status: 'active' }],
+        profiles: [
+          {
+            id: 'user-1',
+            nome: 'Pessoa da organização',
+            plano: 'Individual',
+            subscription_status: 'active',
+            current_period_end: '2026-10-20T00:00:00.000Z',
+          },
+        ],
+        pixPayments: [],
+      },
+      observedAt,
+    )
+
+    expect(facts).toEqual([])
+  })
+
+  it('keeps a standalone profile and maps nome without carrying an email field', () => {
+    const facts = normalizeOrderSync(
+      {
+        organizations: [],
+        organizationMembers: [],
+        profiles: [
+          {
+            id: 'user-2',
+            nome: 'Assinante individual',
+            plano: 'Essencial',
+            subscription_status: 'active',
+            current_period_end: '2026-10-20T00:00:00.000Z',
+          },
+        ],
+        pixPayments: [],
+      },
+      observedAt,
+    )
+
+    expect(facts).toEqual([
+      expect.objectContaining({
+        externalId: 'user-2',
+        entityKind: 'individual',
+        displayName: 'Assinante individual',
+        status: 'active',
+      }),
+    ])
+    expect(JSON.stringify(facts)).not.toContain('email')
+  })
+
+  it('preserves an active record whose period end is already past for the dashboard to flag', () => {
+    const facts = normalizeOrderSync(
+      {
+        organizations: [],
+        organizationMembers: [],
+        profiles: [
+          {
+            id: 'user-3',
+            nome: 'Expiração divergente',
+            plano: 'Pro',
+            subscription_status: 'active',
+            current_period_end: '2026-09-01T00:00:00.000Z',
+          },
+        ],
+        pixPayments: [],
+      },
+      observedAt,
+    )
+
+    expect(facts[0]).toMatchObject({
+      status: 'active',
+      periodEndAt: '2026-09-01T00:00:00.000Z',
+    })
+  })
+
+  it('keeps trial status and uses a paid Pix access end only when profile fields are missing', () => {
+    const facts = normalizeOrderSync(
+      {
+        organizations: [],
+        organizationMembers: [],
+        profiles: [
+          {
+            id: 'user-4',
+            nome: 'Teste',
+            plano: null,
+            subscription_status: 'trialing',
+            trial_ends_at: '2026-10-03T00:00:00.000Z',
+            current_period_end: null,
+          },
+          {
+            id: 'user-5',
+            nome: 'Pix',
+            plano: null,
+            subscription_status: null,
+            current_period_end: null,
+          },
+        ],
+        pixPayments: [
+          {
+            user_id: 'user-5',
+            organization_id: null,
+            status: 'paid',
+            plan: 'Pix Pro',
+            amount_cents: 11960,
+            currency: 'BRL',
+            access_ends_at: '2026-11-01T00:00:00.000Z',
+            paid_at: '2026-09-28T00:00:00.000Z',
+          },
+        ],
+      },
+      observedAt,
+    )
+
+    expect(facts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ externalId: 'user-4', status: 'trialing', trialEndAt: '2026-10-03T00:00:00.000Z' }),
+        expect.objectContaining({
+          externalId: 'user-5',
+          status: 'paid',
+          plan: 'Pix Pro',
+          amountCents: 11960,
+          periodEndAt: '2026-11-01T00:00:00.000Z',
+        }),
+      ]),
+    )
+  })
+})
