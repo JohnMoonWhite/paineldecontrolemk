@@ -19,9 +19,9 @@ export function LoginPage({ onSignIn, onRecoverPassword, pending, error }: Login
 
   return (
     <section className="auth-card" aria-labelledby="login-title">
-      <p className="product-mark">Painel de Controle</p>
-      <h1 id="login-title">Veja o negócio com clareza.</h1>
-      <p className="auth-copy">Entre para acompanhar assinaturas, uso e sinais de atenção em um único lugar.</p>
+      <p className="product-mark">Bem-vindo ao seu painel</p>
+      <h1 id="login-title">Tudo sob controle.</h1>
+      <p className="auth-copy">Entre para acompanhar seus projetos e o que precisa da sua atenção.</p>
       <form className="auth-form" onSubmit={submit}>
         <label>
           E-mail

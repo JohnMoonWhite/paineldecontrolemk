@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LoginPage } from './features/auth/LoginPage'
+import { AuthLayout } from './features/auth/AuthLayout'
 import { MfaChallengePage } from './features/auth/MfaChallengePage'
 import { MfaEnrollmentPage } from './features/auth/MfaEnrollmentPage'
 import { PasswordRecoveryPage } from './features/auth/PasswordRecoveryPage'
@@ -157,20 +158,27 @@ function App() {
     const supabase = getSupabaseClient()
     if (!supabase) return
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'INITIAL_SESSION') void refreshAccess()
-      if (event === 'PASSWORD_RECOVERY') void preparePasswordRecovery()
+      // Auth callbacks run while the client holds its session lock.
+      // Defer further Auth calls until the callback has returned.
+      if (event === 'PASSWORD_RECOVERY') window.setTimeout(() => { void preparePasswordRecovery() }, 0)
+      else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'MFA_CHALLENGE_VERIFIED') {
+        window.setTimeout(() => { void refreshAccess() }, 0)
+      } else if (event === 'SIGNED_OUT') {
+        setAccess({ session: false, currentAal: null, nextAal: null })
+        setFactorId(null); setQrCode(null); setSetupKey(null); setScreen('login')
+      }
     })
     return () => subscription.unsubscribe()
   }, [refreshAccess])
 
   const step = accessStep(access)
-  if (screen === 'request-password') return <main className="access-shell"><PasswordRecoveryPage error={error} onBack={() => { setError(null); setRecoverySent(false); setScreen('login') }} onRequest={requestPasswordRecovery} pending={pending} sent={recoverySent} /></main>
-  if (screen === 'recover-mfa') return <main className="access-shell"><MfaChallengePage error={error} onVerify={verifyRecoveryChallenge} pending={pending} /></main>
-  if (screen === 'set-password') return <main className="access-shell"><SetPasswordPage error={error} onSetPassword={setNewPassword} pending={pending} /></main>
-  if (step === 'enroll-mfa') return <main className="access-shell"><MfaEnrollmentPage key={factorId} error={error} onEnable={verifyEnrollment} onStart={startEnrollment} onSignOut={signOut} pending={pending} qrCode={qrCode} setupKey={setupKey} /></main>
-  if (step === 'challenge-mfa') return <main className="access-shell"><MfaChallengePage error={error} onVerify={verifyChallenge} pending={pending} /></main>
+  if (screen === 'request-password') return <AuthLayout><PasswordRecoveryPage error={error} onBack={() => { setError(null); setRecoverySent(false); setScreen('login') }} onRequest={requestPasswordRecovery} pending={pending} sent={recoverySent} /></AuthLayout>
+  if (screen === 'recover-mfa') return <AuthLayout><MfaChallengePage error={error} onVerify={verifyRecoveryChallenge} pending={pending} /></AuthLayout>
+  if (screen === 'set-password') return <AuthLayout><SetPasswordPage error={error} onSetPassword={setNewPassword} pending={pending} /></AuthLayout>
+  if (step === 'enroll-mfa') return <AuthLayout><MfaEnrollmentPage key={factorId} error={error} onEnable={verifyEnrollment} onStart={startEnrollment} onSignOut={signOut} pending={pending} qrCode={qrCode} setupKey={setupKey} /></AuthLayout>
+  if (step === 'challenge-mfa') return <AuthLayout><MfaChallengePage error={error} onVerify={verifyChallenge} pending={pending} /></AuthLayout>
   if (step === 'dashboard') return <ExecutiveDashboard onSignOut={signOut} />
-  return <main className="access-shell"><LoginPage error={error} onRecoverPassword={() => { setError(null); setScreen('request-password') }} onSignIn={signIn} pending={pending} /></main>
+  return <AuthLayout><LoginPage error={error} onRecoverPassword={() => { setError(null); setScreen('request-password') }} onSignIn={signIn} pending={pending} /></AuthLayout>
 }
 
 function toAal(value: string | null | undefined): AssuranceLevel { return value === 'aal1' || value === 'aal2' ? value : null }
