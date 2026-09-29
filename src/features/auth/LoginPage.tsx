@@ -3,11 +3,12 @@ import type { FormEvent } from 'react'
 
 type LoginPageProps = {
   onSignIn: (email: string, password: string) => void
+  onRecoverPassword: () => void
   pending: boolean
   error: string | null
 }
 
-export function LoginPage({ onSignIn, pending, error }: LoginPageProps) {
+export function LoginPage({ onSignIn, onRecoverPassword, pending, error }: LoginPageProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
@@ -32,6 +33,7 @@ export function LoginPage({ onSignIn, pending, error }: LoginPageProps) {
         </label>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <button className="access-button" disabled={pending} type="submit">{pending ? 'Verificando…' : 'Entrar'}</button>
+        <button className="text-button" disabled={pending} onClick={onRecoverPassword} type="button">Esqueci minha senha</button>
       </form>
       <p className="access-note">Depois da senha, confirmamos o código do seu autenticador.</p>
     </section>

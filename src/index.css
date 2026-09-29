@@ -110,6 +110,23 @@ h1 {
   font-weight: 700;
 }
 
+.text-button {
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  color: #17665d;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.text-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .access-note {
   margin: 1.4rem 0 0;
   color: #71837e;
@@ -120,6 +137,16 @@ h1 {
   margin: 0;
   color: #9c2f2f;
   font-size: 0.9rem;
+}
+
+.form-success {
+  background: #e2f2eb;
+  border: 1px solid #92c8b0;
+  border-radius: 0.5rem;
+  color: #174e3d;
+  line-height: 1.45;
+  margin: 1.5rem 0;
+  padding: 0.9rem;
 }
 
 .mfa-qr {

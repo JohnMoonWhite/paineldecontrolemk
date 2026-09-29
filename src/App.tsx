@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { LoginPage } from './features/auth/LoginPage'
 import { MfaChallengePage } from './features/auth/MfaChallengePage'
 import { MfaEnrollmentPage } from './features/auth/MfaEnrollmentPage'
+import { PasswordRecoveryPage } from './features/auth/PasswordRecoveryPage'
+import { SetPasswordPage } from './features/auth/SetPasswordPage'
 import { accessStep, type AccessState, type AssuranceLevel } from './features/auth/auth-guard'
 import { ExecutiveDashboard } from './features/dashboard/ExecutiveDashboard'
 import { getSupabaseClient } from './lib/supabase'
@@ -13,6 +15,8 @@ function App() {
   const [factorId, setFactorId] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [qrCode, setQrCode] = useState<string | null>(null)
+  const [screen, setScreen] = useState<'login' | 'request-password' | 'set-password'>('login')
+  const [recoverySent, setRecoverySent] = useState(false)
 
   const refreshAccess = useCallback(async () => {
     const supabase = getSupabaseClient()
@@ -24,7 +28,15 @@ function App() {
     setAccess({ session: true, currentAal: toAal(data.currentLevel), nextAal: toAal(data.nextLevel) })
   }, [])
 
-  useEffect(() => { void refreshAccess() }, [refreshAccess])
+  useEffect(() => {
+    const supabase = getSupabaseClient()
+    if (!supabase) return
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'INITIAL_SESSION') void refreshAccess()
+      if (event === 'PASSWORD_RECOVERY') { setError(null); setScreen('set-password') }
+    })
+    return () => subscription.unsubscribe()
+  }, [refreshAccess])
 
   async function signIn(email: string, password: string) {
     const supabase = getSupabaseClient()
@@ -33,6 +45,26 @@ function App() {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
     if (signInError) setError('Não foi possível entrar com estes dados.')
     else await refreshAccess()
+    setPending(false)
+  }
+
+  async function requestPasswordRecovery(email: string) {
+    const supabase = getSupabaseClient()
+    if (!supabase) { setError('A configuração segura do painel ainda não está disponível.'); return }
+    setPending(true); setError(null)
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+    if (resetError) setError('Não foi possível enviar o link agora. Tente novamente em instantes.')
+    else setRecoverySent(true)
+    setPending(false)
+  }
+
+  async function setNewPassword(password: string) {
+    const supabase = getSupabaseClient()
+    if (!supabase) { setError('A configuração segura do painel ainda não está disponível.'); return }
+    setPending(true); setError(null)
+    const { error: updateError } = await supabase.auth.updateUser({ password })
+    if (updateError) setError('Não foi possível salvar a nova senha. Solicite outro link e tente novamente.')
+    else { setScreen('login'); await refreshAccess() }
     setPending(false)
   }
 
@@ -79,14 +111,17 @@ function App() {
   async function signOut() {
     await getSupabaseClient()?.auth.signOut()
     setError(null); setFactorId(null); setQrCode(null)
+    setScreen('login'); setRecoverySent(false)
     setAccess({ session: false, currentAal: null, nextAal: null })
   }
 
   const step = accessStep(access)
+  if (screen === 'request-password') return <main className="access-shell"><PasswordRecoveryPage error={error} onBack={() => { setError(null); setRecoverySent(false); setScreen('login') }} onRequest={requestPasswordRecovery} pending={pending} sent={recoverySent} /></main>
+  if (screen === 'set-password') return <main className="access-shell"><SetPasswordPage error={error} onSetPassword={setNewPassword} pending={pending} /></main>
   if (step === 'enroll-mfa') return <main className="access-shell"><MfaEnrollmentPage error={error} onEnable={verifyEnrollment} onStart={startEnrollment} pending={pending} qrCode={qrCode} /></main>
   if (step === 'challenge-mfa') return <main className="access-shell"><MfaChallengePage error={error} onVerify={verifyChallenge} pending={pending} /></main>
   if (step === 'dashboard') return <ExecutiveDashboard onSignOut={signOut} />
-  return <main className="access-shell"><LoginPage error={error} onSignIn={signIn} pending={pending} /></main>
+  return <main className="access-shell"><LoginPage error={error} onRecoverPassword={() => { setError(null); setScreen('request-password') }} onSignIn={signIn} pending={pending} /></main>
 }
 
 function toAal(value: string | null | undefined): AssuranceLevel { return value === 'aal1' || value === 'aal2' ? value : null }
