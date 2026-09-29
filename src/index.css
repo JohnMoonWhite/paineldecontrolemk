@@ -1,0 +1,124 @@
+:root {
+  color: #163532;
+  background: #edf2eb;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button:focus-visible {
+  outline: 3px solid #f0b65b;
+  outline-offset: 3px;
+}
+
+.access-shell {
+  display: grid;
+  min-height: 100svh;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 40%);
+  background: #f7f8f4;
+}
+
+.access-panel {
+  align-self: center;
+  max-width: 42rem;
+  padding: clamp(2rem, 8vw, 8rem);
+}
+
+.product-mark {
+  margin: 0 0 3.5rem;
+  color: #2d6961;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+h1 {
+  max-width: 13ch;
+  margin: 0;
+  color: #123f3b;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.7rem, 6vw, 5.8rem);
+  font-weight: 500;
+  letter-spacing: -0.06em;
+  line-height: 0.94;
+}
+
+.access-copy {
+  max-width: 32rem;
+  margin: 2rem 0;
+  color: #55706a;
+  font-size: 1.08rem;
+  line-height: 1.65;
+}
+
+.access-button {
+  border: 0;
+  border-radius: 0.35rem;
+  padding: 0.95rem 1.35rem;
+  color: #f8f5ee;
+  background: #123f3b;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.access-note {
+  margin: 1.4rem 0 0;
+  color: #71837e;
+  font-size: 0.86rem;
+}
+
+.access-structure {
+  display: grid;
+  overflow: hidden;
+  grid-template-columns: repeat(2, 1fr);
+  background: #123f3b;
+  gap: 1px;
+}
+
+.access-structure span {
+  min-height: 12rem;
+  background: #1e5751;
+}
+
+.access-structure span:nth-child(2),
+.access-structure span:nth-child(3) {
+  background: #174943;
+}
+
+@media (max-width: 720px) {
+  .access-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .access-panel {
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  .product-mark {
+    margin-bottom: 4rem;
+  }
+
+  .access-structure {
+    min-height: 7rem;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .access-structure span {
+    min-height: 7rem;
+  }
+}
