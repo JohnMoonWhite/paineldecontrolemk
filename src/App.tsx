@@ -5,6 +5,7 @@ import { MfaEnrollmentPage } from './features/auth/MfaEnrollmentPage'
 import { PasswordRecoveryPage } from './features/auth/PasswordRecoveryPage'
 import { SetPasswordPage } from './features/auth/SetPasswordPage'
 import { accessStep, type AccessState, type AssuranceLevel } from './features/auth/auth-guard'
+import { mfaQrImageSource } from './features/auth/mfa-qr'
 import { passwordRecoveryErrorMessage, recoveryAccessStep } from './features/auth/recovery-flow'
 import { ExecutiveDashboard } from './features/dashboard/ExecutiveDashboard'
 import { getSupabaseClient } from './lib/supabase'
@@ -92,7 +93,7 @@ function App() {
     setPending(true); setError(null)
     const { data, error: enrollError } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Painel de Controle' })
     if (enrollError) setError('Não foi possível preparar o autenticador.')
-    else { setFactorId(data.id); setQrCode(`data:image/svg+xml;utf8,${encodeURIComponent(data.totp.qr_code)}`) }
+    else { setFactorId(data.id); setQrCode(mfaQrImageSource(data.totp.qr_code)) }
     setPending(false)
   }
 
