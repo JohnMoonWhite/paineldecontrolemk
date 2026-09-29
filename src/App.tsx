@@ -3,6 +3,7 @@ import { LoginPage } from './features/auth/LoginPage'
 import { MfaChallengePage } from './features/auth/MfaChallengePage'
 import { MfaEnrollmentPage } from './features/auth/MfaEnrollmentPage'
 import { accessStep, type AccessState, type AssuranceLevel } from './features/auth/auth-guard'
+import { ExecutiveDashboard } from './features/dashboard/ExecutiveDashboard'
 import { getSupabaseClient } from './lib/supabase'
 import './index.css'
 
@@ -84,7 +85,7 @@ function App() {
   const step = accessStep(access)
   if (step === 'enroll-mfa') return <main className="access-shell"><MfaEnrollmentPage error={error} onEnable={verifyEnrollment} onStart={startEnrollment} pending={pending} qrCode={qrCode} /></main>
   if (step === 'challenge-mfa') return <main className="access-shell"><MfaChallengePage error={error} onVerify={verifyChallenge} pending={pending} /></main>
-  if (step === 'dashboard') return <main className="access-shell"><section className="auth-card"><p className="product-mark">Painel de Controle</p><h1>Seu acesso está protegido.</h1><p className="auth-copy">A visão executiva será carregada aqui usando apenas as fotografias consolidadas.</p><button className="access-button" onClick={signOut} type="button">Sair</button></section></main>
+  if (step === 'dashboard') return <ExecutiveDashboard onSignOut={signOut} />
   return <main className="access-shell"><LoginPage error={error} onSignIn={signIn} pending={pending} /></main>
 }
 
