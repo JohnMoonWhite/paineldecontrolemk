@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { DashboardFact } from './dashboard-query'
-import type { FinanceExclusion } from './finance'
+import type { FinanceExclusion, ManualAmount } from './finance'
 
 export type Source = { id: string; code: string; name: string; status: string; last_success_at: string | null }
-export type DashboardSnapshot = { facts: DashboardFact[]; sources: Source[]; exclusions?: FinanceExclusion[] }
+export type DashboardSnapshot = { facts: DashboardFact[]; sources: Source[]; exclusions?: FinanceExclusion[]; manualAmounts?: ManualAmount[] }
 export class DashboardAccessError extends Error {}
 
 export async function loadDashboard(client: SupabaseClient, signal: AbortSignal): Promise<DashboardSnapshot> {
@@ -13,17 +13,19 @@ export async function loadDashboard(client: SupabaseClient, signal: AbortSignal)
   if (adminError) throw new Error('Não foi possível confirmar seu acesso. Tente atualizar novamente.')
   if (!admin) throw new DashboardAccessError('Esta conta não tem acesso ao painel. Entre com uma das contas autorizadas.')
 
-  const [facts, sourcesResult, exclusionsResult] = await Promise.all([
+  const [facts, sourcesResult, exclusionsResult, manualResult] = await Promise.all([
     loadAllFacts(client, signal),
     client.from('monitoring_sources').select('id,code,name,status,last_success_at').order('name').abortSignal(signal),
     client.from('monitoring_finance_exclusions').select('source_id,external_id,entity_kind').abortSignal(signal),
+    client.from('monitoring_manual_amounts').select('source_id,external_id,entity_kind,amount_cents').abortSignal(signal),
   ])
   if (sourcesResult.error) throw new Error('Não foi possível consultar os projetos. Tente atualizar novamente.')
-  if (exclusionsResult.error) throw new Error('Não foi possível consultar as contas internas. Tente atualizar novamente.')
+  if (exclusionsResult.error || manualResult.error) throw new Error('Não foi possível consultar os ajustes financeiros. Tente atualizar novamente.')
   return {
     facts,
     sources: (sourcesResult.data ?? []) as Source[],
     exclusions: (exclusionsResult.data ?? []) as FinanceExclusion[],
+    manualAmounts: (manualResult.data ?? []) as ManualAmount[],
   }
 }
 

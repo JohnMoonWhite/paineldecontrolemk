@@ -17,7 +17,7 @@ export function FinancePanel({ summary, available }: { summary: FinanceSummary; 
       <FinanceMetric label="Renovações em 30 dias" value={value(summary.renewalsNext30Cents)} note={available ? plural(summary.renewalsNext30Count, 'assinatura vence', 'assinaturas vencem') + ' no período' : 'Assinaturas que vencem no período'} />
     </div>
     {available ? <ul className="finance-notes">
-      <li>{money(summary.confirmedCents)} confirmados por pagamento{summary.estimatedCount ? ` · ${money(summary.estimatedCents)} de ${plural(summary.estimatedCount, 'assinatura estimada', 'assinaturas estimadas')} pelo valor do plano` : ''}.</li>
+      <li>{money(summary.confirmedCents)} confirmados por pagamento{summary.manualCount ? ` · ${money(summary.manualCents)} informados manualmente (${plural(summary.manualCount, 'assinatura', 'assinaturas')})` : ''}{summary.estimatedCount ? ` · ${money(summary.estimatedCents)} de ${plural(summary.estimatedCount, 'assinatura estimada', 'assinaturas estimadas')} pelo valor do plano` : ''}.</li>
       {summary.withoutValue.length ? <li className="finance-notes__warning">Sem valor registrado, fora da soma: {summary.withoutValue.join(', ')}.</li> : null}
       {summary.expiredActiveCount ? <li className="finance-notes__warning">{plural(summary.expiredActiveCount, 'assinatura ativa está vencida', 'assinaturas ativas estão vencidas')} e ficou fora da receita.</li> : null}
     </ul> : null}

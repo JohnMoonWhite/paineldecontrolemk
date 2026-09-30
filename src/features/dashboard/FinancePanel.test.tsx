@@ -4,7 +4,7 @@ import { FinancePanel } from './FinancePanel'
 import type { FinanceSummary } from './finance'
 
 const summary: FinanceSummary = {
-  payingCount: 10, monthlyCents: 49900, confirmedCents: 34930, estimatedCents: 14970, estimatedCount: 3,
+  payingCount: 10, monthlyCents: 49900, confirmedCents: 34930, estimatedCents: 14970, estimatedCount: 3, manualCents: 0, manualCount: 0,
   annualCents: 598800, averageTicketCents: 4990, renewalsNext30Cents: 29940, renewalsNext30Count: 6,
   expiredActiveCount: 0, withoutValue: ['AGRODII'], excludedNames: ['MKHUB', 'Clebson - GESTOR TESTE'],
 }

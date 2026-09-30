@@ -81,4 +81,25 @@ describe('summarizeFinance', () => {
     expect(summary.renewalsNext30Cents).toBe(4990)
     expect(summary.renewalsNext30Count).toBe(1)
   })
+
+  it('uses a manually informed value when the source has none', () => {
+    const summary = summarizeFinance([
+      fact({ external_id: 'org', entity_kind: 'organization', plan: 'empresas', amount_cents: null, display_name: 'AGRODII' }),
+      fact({ external_id: 'a' }),
+    ], [], now, [{ source_id: 's1', external_id: 'org', entity_kind: 'organization', amount_cents: 23900 }])
+
+    expect(summary.monthlyCents).toBe(28890)
+    expect(summary.manualCents).toBe(23900)
+    expect(summary.manualCount).toBe(1)
+    expect(summary.withoutValue).toEqual([])
+  })
+
+  it('prefers the value recorded by the source over a manual one', () => {
+    const summary = summarizeFinance([
+      fact({ external_id: 'a', amount_cents: 5990 }),
+    ], [], now, [{ source_id: 's1', external_id: 'a', entity_kind: 'individual', amount_cents: 1000 }])
+
+    expect(summary.monthlyCents).toBe(5990)
+    expect(summary.manualCount).toBe(0)
+  })
 })

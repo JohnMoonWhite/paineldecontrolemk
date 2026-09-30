@@ -1,6 +1,7 @@
 import { factState, type DashboardFact } from './dashboard-query'
 
 export type FinanceExclusion = { source_id: string; external_id: string; entity_kind: string }
+export type ManualAmount = FinanceExclusion & { amount_cents: number }
 
 export type FinanceSummary = {
   payingCount: number
@@ -8,6 +9,8 @@ export type FinanceSummary = {
   confirmedCents: number
   estimatedCents: number
   estimatedCount: number
+  manualCents: number
+  manualCount: number
   annualCents: number
   averageTicketCents: number
   renewalsNext30Cents: number
@@ -23,12 +26,18 @@ const exclusionKey = (item: { source_id?: string; external_id: string; entity_ki
   `${item.source_id ?? ''}:${item.entity_kind}:${item.external_id}`
 
 /**
- * Monthly revenue of active, non-internal subscriptions. A subscription without a recorded
- * value is estimated from the most common value of the same plan; if the plan has no known
- * value it is listed in `withoutValue` instead.
+ * Monthly revenue of active, non-internal subscriptions. A subscription without a value
+ * recorded by the source uses a manually informed value, else the most common value of the
+ * same plan; if neither exists it is listed in `withoutValue` instead.
  */
-export function summarizeFinance(facts: DashboardFact[], exclusions: FinanceExclusion[], now: Date): FinanceSummary {
+export function summarizeFinance(
+  facts: DashboardFact[],
+  exclusions: FinanceExclusion[],
+  now: Date,
+  manualAmounts: ManualAmount[] = [],
+): FinanceSummary {
   const excluded = new Set(exclusions.map(exclusionKey))
+  const manual = new Map(manualAmounts.map(item => [exclusionKey(item), item.amount_cents]))
   const excludedNames: string[] = []
   const active: DashboardFact[] = []
   let expiredActiveCount = 0
@@ -45,21 +54,26 @@ export function summarizeFinance(facts: DashboardFact[], exclusions: FinanceExcl
   let confirmedCents = 0
   let estimatedCents = 0
   let estimatedCount = 0
+  let manualCents = 0
+  let manualCount = 0
   let renewalsNext30Cents = 0
   let renewalsNext30Count = 0
   const withoutValue: string[] = []
 
   for (const fact of active) {
     const confirmed = fact.amount_cents ?? null
-    const amount = confirmed ?? referencePrice.get(planKey(fact)) ?? null
+    const informed = confirmed === null ? manual.get(exclusionKey(fact)) ?? null : null
+    const amount = confirmed ?? informed ?? referencePrice.get(planKey(fact)) ?? null
     if (amount === null) { withoutValue.push(fact.display_name?.trim() || fact.external_id); continue }
-    if (confirmed === null) { estimatedCents += amount; estimatedCount++ } else confirmedCents += amount
+    if (confirmed !== null) confirmedCents += amount
+    else if (informed !== null) { manualCents += amount; manualCount++ }
+    else { estimatedCents += amount; estimatedCount++ }
 
     const periodEnd = fact.period_end_at ? Date.parse(fact.period_end_at) : NaN
     if (Number.isFinite(periodEnd) && periodEnd <= renewalLimit) { renewalsNext30Cents += amount; renewalsNext30Count++ }
   }
 
-  const monthlyCents = confirmedCents + estimatedCents
+  const monthlyCents = confirmedCents + manualCents + estimatedCents
   const valued = active.length - withoutValue.length
   return {
     payingCount: active.length,
@@ -67,6 +81,8 @@ export function summarizeFinance(facts: DashboardFact[], exclusions: FinanceExcl
     confirmedCents,
     estimatedCents,
     estimatedCount,
+    manualCents,
+    manualCount,
     annualCents: monthlyCents * 12,
     averageTicketCents: valued ? Math.round(monthlyCents / valued) : 0,
     renewalsNext30Cents,
