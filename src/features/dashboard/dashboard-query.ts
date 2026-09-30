@@ -9,6 +9,8 @@ export type DashboardFact = {
   trial_end_at: string | null
   seat_count: number | null
   provider: string | null
+  amount_cents?: number | null
+  currency?: string | null
 }
 
 export type SubscriptionHealth = {

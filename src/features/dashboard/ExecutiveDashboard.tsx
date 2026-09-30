@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Brand } from '../../components/Brand'
 import { Icon } from '../../components/Icon'
+import { FinancePanel } from './FinancePanel'
 import { SubscriptionHealth } from './SubscriptionHealth'
 import { SubscriptionTable } from './SubscriptionTable'
 import { summarizeSubscriptionHealth } from './dashboard-query'
 import { sourceHealth } from './dashboard-data'
+import { summarizeFinance } from './finance'
 import { useDashboard } from './useDashboard'
 
 const sourceLabels = { healthy: 'Em dia', warning: 'Atenção', stale: 'Desatualizado', pending: 'Sem sincronização' }
@@ -20,6 +22,7 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
   const selectedSources = sources.filter(source => sourceId === 'all' || source.id === sourceId)
   const facts = useMemo(() => (snapshot?.facts ?? []).filter(fact => sourceId === 'all' || fact.source_id === sourceId), [snapshot, sourceId])
   const health = summarizeSubscriptionHealth(facts, now)
+  const finance = summarizeFinance(facts, snapshot?.exclusions ?? [], now)
   const hasData = facts.length > 0 || selectedSources.some(source => source.last_success_at)
   const needsAttention = selectedSources.some(source => sourceHealth(source, now) !== 'healthy')
 
@@ -30,6 +33,7 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
       <nav aria-label="Navegação principal">
         <a className="nav-link nav-link--primary" href="#overview"><Icon name="overview" />Visão geral</a>
         <a className="nav-link" href="#projects"><Icon name="projects" />Projetos<span>{sources.length || '—'}</span></a>
+        <a className="nav-link" href="#finance"><Icon name="finance" />Financeiro</a>
         <a className="nav-link" href="#subscriptions"><Icon name="subscriptions" />Assinaturas</a>
       </nav>
       <button className="nav-link signout-button" onClick={onSignOut} type="button"><Icon name="logout" /><span>Sair da conta</span></button>
@@ -57,6 +61,7 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
           </section>
           <section className="panel portfolio-panel" aria-labelledby="portfolio-title"><div className="section-heading"><div><h2 id="portfolio-title">Sua carteira</h2><p>Composição das assinaturas</p></div></div><div className="portfolio-total"><strong>{hasData ? facts.length.toLocaleString('pt-BR') : '—'}</strong><span>assinaturas identificadas</span></div><div className="portfolio-bar" aria-hidden="true">{facts.length ? <><span style={{ width: `${health.individuals / facts.length * 100}%` }} /><span style={{ width: `${health.organizations / facts.length * 100}%` }} /></> : null}</div><dl className="portfolio-breakdown"><div><dt><i />Individuais</dt><dd>{hasData ? health.individuals : '—'}</dd></div><div><dt><i />Empresariais</dt><dd>{hasData ? health.organizations : '—'}</dd></div></dl><p className="portfolio-note">Cada assinatura empresarial conta uma vez, independentemente da quantidade de membros.</p></section>
         </div>
+        <FinancePanel summary={finance} available={hasData} />
         <SubscriptionTable key={sourceId} facts={facts} sources={sources} now={now} />
         <footer className="dashboard-footer"><span>MKHUB. Clareza para decidir.</span><span>Horários exibidos no seu fuso local</span></footer>
       </div>

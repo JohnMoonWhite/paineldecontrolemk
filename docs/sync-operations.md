@@ -23,7 +23,7 @@ A migration `monitoring_sync_dispatch` cria:
 
 - `private.dispatch_monitoring_syncs()`: chama `sync-<código>` para cada fonte de `monitoring_sources`, enviando a chave no cabeçalho `apikey`;
 - o Job `monitoring-sync-every-5-minutes` (pg_cron), que executa essa função a cada cinco minutos;
-- `public.request_monitoring_sync()`: usada pelo botão "Atualizar agora". Só admins do painel com MFA (aal2) podem chamá-la; uma coleta iniciada nos últimos 20 segundos é reaproveitada.
+- `public.request_monitoring_sync()`: usada pelo botão "Atualizar agora". Só contas da lista `monitoring_admins` podem chamá-la; uma coleta iniciada nos últimos 20 segundos é reaproveitada.
 
 A chave `monitoring_scheduler` fica no Vault do projeto central com o nome **`monitoring_scheduler_key`**. O nome é obrigatório:
 
