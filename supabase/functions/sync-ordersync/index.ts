@@ -1,8 +1,9 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import postgres from 'postgres'
-import { resolveOrderSyncCredentials } from '../_shared/source-credentials.ts'
+import { OrderSyncCredentialError, resolveOrderSyncCredentials } from '../_shared/source-credentials.ts'
 import { readOrderSyncRecords } from '../_shared/ordersync-source-reader.ts'
+import { classifySourceReadError } from '../_shared/source-read-error.ts'
 import { createOrderSyncRequestHandler } from '../_shared/sync-ordersync-handler.ts'
 import { executeOrderSync } from '../_shared/sync-ordersync.ts'
 
@@ -52,8 +53,13 @@ async function readOrderSyncDatabase() {
   let databaseUrl: string
   try {
     databaseUrl = resolveOrderSyncCredentials().databaseUrl
-  } catch {
-    throw new Error('ORDERSYNC_SOURCE_CONFIG_FAILED')
+  } catch (error) {
+    throw new Error(
+      error instanceof OrderSyncCredentialError
+        ? `ORDERSYNC_SOURCE_CONFIG_FAILED:${error.reason}`
+        : 'ORDERSYNC_SOURCE_CONFIG_FAILED',
+      { cause: error },
+    )
   }
 
   const sql = postgres(databaseUrl, {
@@ -77,22 +83,6 @@ async function readOrderSyncDatabase() {
       // The source query result or error is authoritative; connection teardown is best effort.
     }
   }
-}
-
-function classifySourceReadError(error: unknown): Error {
-  const code = typeof error === 'object' && error !== null && 'code' in error
-    ? String(error.code)
-    : ''
-
-  if (code === '28P01' || code === '28000') {
-    return new Error('ORDERSYNC_SOURCE_AUTH_FAILED')
-  }
-
-  if (code === '42501') {
-    return new Error('ORDERSYNC_SOURCE_PERMISSION_FAILED')
-  }
-
-  return new Error('ORDERSYNC_SOURCE_READ_FAILED')
 }
 
 function createCentralClient() {

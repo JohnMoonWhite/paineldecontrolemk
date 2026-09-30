@@ -55,6 +55,13 @@ function toSnapshotFact(fact: NormalizedSubscriptionFact): SnapshotFact {
   }
 }
 
+const configFailureDetails: Record<string, string> = {
+  missing: 'ORDERSYNC_DATABASE_URL secret is not set',
+  invalid_url: 'URL cannot be parsed (URL-encode special characters in the password)',
+  not_transaction_pooler: 'URL must use the transaction pooler (port 6543)',
+  incomplete: 'URL needs user, password and the /postgres database',
+}
+
 function errorSummary(error: unknown): string {
   if (error instanceof Error) {
     if (error.message.startsWith('ORDERSYNC_SOURCE_AUTH_FAILED')) {
@@ -66,7 +73,27 @@ function errorSummary(error: unknown): string {
     }
 
     if (error.message.startsWith('ORDERSYNC_SOURCE_CONFIG_FAILED')) {
-      return 'OrdemSync reader configuration is invalid'
+      const reason = error.message.split(':')[1]
+      const detail = reason ? configFailureDetails[reason] : undefined
+
+      return detail
+        ? `OrdemSync reader configuration is invalid: ${detail}`
+        : 'OrdemSync reader configuration is invalid'
+    }
+
+    if (error.message.startsWith('ORDERSYNC_SOURCE_READ_FAILED')) {
+      const databaseCode = error.message.match(
+        /^ORDERSYNC_SOURCE_READ_FAILED:([0-9A-Z]{5})(?::|$)/,
+      )?.[1]
+      if (databaseCode) {
+        return `OrdemSync source read failed (database code ${databaseCode})`
+      }
+
+      const detail = error.message.match(
+        /^ORDERSYNC_SOURCE_READ_FAILED:((?:missing:[a-z_]+\.[a-z_]+)|[A-Za-z][A-Za-z0-9_]{1,40})$/,
+      )?.[1]
+
+      return detail ? `OrdemSync source read failed (${detail})` : 'OrdemSync source read failed'
     }
 
     if (error.message.startsWith('MONITORING_CENTRAL_WRITE_FAILED')) {

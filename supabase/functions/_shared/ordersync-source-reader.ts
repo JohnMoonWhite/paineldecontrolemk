@@ -39,7 +39,10 @@ export async function readOrderSyncRecords(query: SourceQuery): Promise<OrderSyn
   return {
     profiles: profiles.map(toProfile),
     organizations: organizations.map(toOrganization),
-    organizationMembers: organizationMembers.map(toOrganizationMember),
+    // Memberships without a linked user (e.g. pending invites) cannot exclude any profile.
+    organizationMembers: organizationMembers
+      .filter((row) => isPresentString(row.org_id) && isPresentString(row.user_id))
+      .map(toOrganizationMember),
     pixPayments: pixPayments.map(toPixPayment),
   }
 }
@@ -50,8 +53,8 @@ function toProfile(row: Record<string, unknown>): OrderSyncProfile {
     nome: nullableString(row.nome),
     plano: nullableString(row.plano),
     subscription_status: nullableString(row.subscription_status),
-    trial_ends_at: nullableString(row.trial_ends_at),
-    current_period_end: nullableString(row.current_period_end),
+    trial_ends_at: nullableTimestamp(row.trial_ends_at),
+    current_period_end: nullableTimestamp(row.current_period_end),
     cancel_at_period_end: nullableBoolean(row.cancel_at_period_end),
     payment_provider: nullableString(row.payment_provider),
   }
@@ -63,8 +66,8 @@ function toOrganization(row: Record<string, unknown>): OrderSyncOrganization {
     nome: nullableString(row.nome),
     plano: nullableString(row.plano),
     subscription_status: nullableString(row.subscription_status),
-    current_period_end: nullableString(row.current_period_end),
-    trial_ends_at: nullableString(row.trial_ends_at),
+    current_period_end: nullableTimestamp(row.current_period_end),
+    trial_ends_at: nullableTimestamp(row.trial_ends_at),
     payment_provider: nullableString(row.payment_provider),
     seats: nullableNumber(row.seats),
   }
@@ -86,8 +89,8 @@ function toPixPayment(row: Record<string, unknown>): OrderSyncPixPayment {
     plan: nullableString(row.plan),
     amount_cents: nullableNumber(row.amount_cents),
     currency: null,
-    access_ends_at: nullableString(row.access_ends_at),
-    paid_at: nullableString(row.paid_at),
+    access_ends_at: nullableTimestamp(row.access_ends_at),
+    paid_at: nullableTimestamp(row.paid_at),
   }
 }
 
@@ -99,14 +102,29 @@ function requiredString(value: unknown, field: string): string {
   return value
 }
 
+function isPresentString(value: unknown): boolean {
+  return typeof value === 'string' && value !== ''
+}
+
 function nullableString(value: unknown): string | null {
   return typeof value === 'string' ? value : null
+}
+
+// postgres.js returns date/timestamp columns as Date objects.
+function nullableTimestamp(value: unknown): string | null {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString()
+  }
+
+  return nullableString(value)
 }
 
 function nullableBoolean(value: unknown): boolean | null {
   return typeof value === 'boolean' ? value : null
 }
 
+// postgres.js returns bigint and numeric columns as strings.
 function nullableNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null
+  const number = typeof value === 'string' && value.trim() ? Number(value) : value
+  return typeof number === 'number' && Number.isFinite(number) ? number : null
 }

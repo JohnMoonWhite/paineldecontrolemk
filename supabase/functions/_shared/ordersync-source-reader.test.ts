@@ -60,4 +60,41 @@ describe('readOrderSyncRecords', () => {
       pixPayments: [],
     })
   })
+
+  it('converts Postgres driver values (Date timestamps, bigint strings) into facts', async () => {
+    const periodEnd = new Date('2026-10-15T12:00:00.000Z')
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([
+        { id: 'profile-1', subscription_status: 'active', current_period_end: periodEnd, trial_ends_at: null },
+      ])
+      .mockResolvedValueOnce([{ id: 'org-1', subscription_status: 'active', seats: '5' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { user_id: 'profile-1', org_id: null, status: 'paid', amount_cents: '4990', paid_at: periodEnd },
+      ])
+
+    const records = await readOrderSyncRecords(query)
+
+    expect(records.profiles[0].current_period_end).toBe('2026-10-15T12:00:00.000Z')
+    expect(records.organizations[0].seats).toBe(5)
+    expect(records.pixPayments[0].amount_cents).toBe(4990)
+    expect(records.pixPayments[0].paid_at).toBe('2026-10-15T12:00:00.000Z')
+  })
+
+  it('skips memberships without a linked user, such as pending invites', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { org_id: 'org-1', user_id: null, status: 'pending' },
+        { org_id: 'org-1', user_id: 'profile-1', status: 'active' },
+      ])
+      .mockResolvedValueOnce([])
+
+    const records = await readOrderSyncRecords(query)
+
+    expect(records.organizationMembers).toEqual([{ org_id: 'org-1', user_id: 'profile-1', status: 'active' }])
+  })
 })
