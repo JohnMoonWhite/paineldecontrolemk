@@ -7,6 +7,7 @@ export type OrderSyncProfile = {
   current_period_end?: string | null
   cancel_at_period_end?: boolean | null
   payment_provider?: string | null
+  stripe_subscription_id?: string | null
 }
 
 export type OrderSyncOrganization = {
@@ -19,6 +20,7 @@ export type OrderSyncOrganization = {
   cancel_at_period_end?: boolean | null
   payment_provider?: string | null
   seats?: number | null
+  stripe_subscription_id?: string | null
 }
 
 export type OrderSyncOrganizationMember = {
@@ -38,11 +40,21 @@ export type OrderSyncPixPayment = {
   paid_at: string | null
 }
 
+/** Latest known state of a Stripe subscription, taken from the source's webhook log. */
+export type OrderSyncStripeSubscription = {
+  subscription_id: string
+  status: string | null
+  period_end: string | null
+  amount_cents: number | null
+  currency: string | null
+}
+
 export type OrderSyncRecords = {
   profiles: OrderSyncProfile[]
   organizations: OrderSyncOrganization[]
   organizationMembers: OrderSyncOrganizationMember[]
   pixPayments: OrderSyncPixPayment[]
+  stripeSubscriptions?: OrderSyncStripeSubscription[]
 }
 
 export type NormalizedSubscriptionFact = {

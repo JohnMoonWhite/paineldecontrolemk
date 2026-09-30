@@ -167,4 +167,37 @@ describe('normalizeOrderSync', () => {
       ]),
     )
   })
+
+  it('fills due date, value and provider from the latest Stripe subscription state', () => {
+    const facts = normalizeOrderSync(
+      {
+        organizations: [],
+        organizationMembers: [],
+        profiles: [
+          {
+            id: 'profile-1',
+            nome: 'AGRI COTTON',
+            plano: 'pro',
+            subscription_status: 'active',
+            current_period_end: null,
+            payment_provider: null,
+            stripe_subscription_id: 'sub_1',
+          },
+        ],
+        pixPayments: [],
+        stripeSubscriptions: [
+          { subscription_id: 'sub_1', status: 'active', period_end: '2026-10-06T22:49:24.000Z', amount_cents: 4990, currency: 'brl' },
+        ],
+      },
+      observedAt,
+    )
+
+    expect(facts[0]).toEqual(expect.objectContaining({
+      periodEndAt: '2026-10-06T22:49:24.000Z',
+      amountCents: 4990,
+      currency: 'BRL',
+      provider: 'stripe',
+      status: 'active',
+    }))
+  })
 })

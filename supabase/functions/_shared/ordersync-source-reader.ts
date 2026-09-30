@@ -4,19 +4,20 @@ import type {
   OrderSyncPixPayment,
   OrderSyncProfile,
   OrderSyncRecords,
+  OrderSyncStripeSubscription,
 } from './ordersync-types.ts'
 
 export type SourceQuery = (statement: string) => Promise<Record<string, unknown>[]>
 
 const profilesQuery = `
   select id, nome, plano, subscription_status, trial_ends_at, current_period_end,
-    cancel_at_period_end, payment_provider
+    cancel_at_period_end, payment_provider, stripe_subscription_id
   from public.profiles
 `
 
 const organizationsQuery = `
   select id, nome, plano, subscription_status, current_period_end, trial_ends_at,
-    payment_provider, seats
+    payment_provider, seats, stripe_subscription_id
   from public.organizations
 `
 
@@ -30,11 +31,19 @@ const pixPaymentsQuery = `
   from public.pix_payments
 `
 
+// A view in the source exposes only status, due date and value of each Stripe subscription,
+// so the reader never touches the raw webhook payload (see docs/source-credentials-ordersync.md).
+const stripeSubscriptionsQuery = `
+  select subscription_id, status, period_end, amount_cents, currency
+  from monitoring.stripe_subscriptions
+`
+
 export async function readOrderSyncRecords(query: SourceQuery): Promise<OrderSyncRecords> {
   const profiles = await query(profilesQuery)
   const organizations = await query(organizationsQuery)
   const organizationMembers = await query(organizationMembersQuery)
   const pixPayments = await query(pixPaymentsQuery)
+  const stripeSubscriptions = await query(stripeSubscriptionsQuery)
 
   return {
     profiles: profiles.map(toProfile),
@@ -44,6 +53,7 @@ export async function readOrderSyncRecords(query: SourceQuery): Promise<OrderSyn
       .filter((row) => isPresentString(row.org_id) && isPresentString(row.user_id))
       .map(toOrganizationMember),
     pixPayments: pixPayments.map(toPixPayment),
+    stripeSubscriptions: stripeSubscriptions.map(toStripeSubscription),
   }
 }
 
@@ -57,6 +67,7 @@ function toProfile(row: Record<string, unknown>): OrderSyncProfile {
     current_period_end: nullableTimestamp(row.current_period_end),
     cancel_at_period_end: nullableBoolean(row.cancel_at_period_end),
     payment_provider: nullableString(row.payment_provider),
+    stripe_subscription_id: nullableString(row.stripe_subscription_id),
   }
 }
 
@@ -70,6 +81,7 @@ function toOrganization(row: Record<string, unknown>): OrderSyncOrganization {
     trial_ends_at: nullableTimestamp(row.trial_ends_at),
     payment_provider: nullableString(row.payment_provider),
     seats: nullableNumber(row.seats),
+    stripe_subscription_id: nullableString(row.stripe_subscription_id),
   }
 }
 
@@ -91,6 +103,16 @@ function toPixPayment(row: Record<string, unknown>): OrderSyncPixPayment {
     currency: null,
     access_ends_at: nullableTimestamp(row.access_ends_at),
     paid_at: nullableTimestamp(row.paid_at),
+  }
+}
+
+function toStripeSubscription(row: Record<string, unknown>): OrderSyncStripeSubscription {
+  return {
+    subscription_id: requiredString(row.subscription_id, 'stripe_events.subscription_id'),
+    status: nullableString(row.status),
+    period_end: nullableTimestamp(row.period_end),
+    amount_cents: nullableNumber(row.amount_cents),
+    currency: nullableString(row.currency),
   }
 }
 

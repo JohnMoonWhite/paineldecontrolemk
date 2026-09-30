@@ -4,6 +4,7 @@ import type {
   OrderSyncPixPayment,
   OrderSyncProfile,
   OrderSyncRecords,
+  OrderSyncStripeSubscription,
 } from './ordersync-types.ts'
 
 const activeMembershipStatuses = new Set(['active', 'ativo'])
@@ -19,14 +20,16 @@ export function normalizeOrderSync(
       .map((membership) => membership.user_id),
   )
   const paymentsByOwner = buildPaidPaymentIndex(records.pixPayments)
+  const stripeById = new Map((records.stripeSubscriptions ?? []).map((item) => [item.subscription_id, item]))
+  const stripeFor = (id: string | null | undefined) => (id ? stripeById.get(id) : undefined)
 
   const organizations = records.organizations
-    .map((organization) => normalizeOrganization(organization, paymentsByOwner.get('organization:' + organization.id), observedAt))
+    .map((organization) => normalizeOrganization(organization, paymentsByOwner.get('organization:' + organization.id), stripeFor(organization.stripe_subscription_id), observedAt))
     .filter((fact): fact is NormalizedSubscriptionFact => fact !== null)
 
   const individuals = records.profiles
     .filter((profile) => !activeMemberIds.has(profile.id))
-    .map((profile) => normalizeProfile(profile, paymentsByOwner.get('individual:' + profile.id), observedAt))
+    .map((profile) => normalizeProfile(profile, paymentsByOwner.get('individual:' + profile.id), stripeFor(profile.stripe_subscription_id), observedAt))
     .filter((fact): fact is NormalizedSubscriptionFact => fact !== null)
 
   return [...organizations, ...individuals]
@@ -35,6 +38,7 @@ export function normalizeOrderSync(
 function normalizeOrganization(
   organization: OrderSyncOrganization,
   payment: OrderSyncPixPayment | undefined,
+  stripe: OrderSyncStripeSubscription | undefined,
   observedAt: string,
 ): NormalizedSubscriptionFact | null {
   return normalizeEntity(
@@ -51,6 +55,7 @@ function normalizeOrganization(
       provider: organization.payment_provider,
     },
     payment,
+    stripe,
     observedAt,
   )
 }
@@ -58,6 +63,7 @@ function normalizeOrganization(
 function normalizeProfile(
   profile: OrderSyncProfile,
   payment: OrderSyncPixPayment | undefined,
+  stripe: OrderSyncStripeSubscription | undefined,
   observedAt: string,
 ): NormalizedSubscriptionFact | null {
   return normalizeEntity(
@@ -74,6 +80,7 @@ function normalizeProfile(
       provider: profile.payment_provider,
     },
     payment,
+    stripe,
     observedAt,
   )
 }
@@ -81,9 +88,10 @@ function normalizeProfile(
 function normalizeEntity(
   entity: Omit<NormalizedSubscriptionFact, 'amountCents' | 'currency' | 'observedAt'> & { status: string | null },
   payment: OrderSyncPixPayment | undefined,
+  stripe: OrderSyncStripeSubscription | undefined,
   observedAt: string,
 ): NormalizedSubscriptionFact | null {
-  const status = entity.status ?? payment?.status
+  const status = entity.status ?? payment?.status ?? stripe?.status
   if (!status) {
     return null
   }
@@ -92,11 +100,11 @@ function normalizeEntity(
     ...entity,
     plan: entity.plan ?? payment?.plan ?? null,
     status,
-    periodEndAt: entity.periodEndAt ?? payment?.access_ends_at ?? null,
+    periodEndAt: entity.periodEndAt ?? payment?.access_ends_at ?? stripe?.period_end ?? null,
     trialEndAt: entity.trialEndAt ?? null,
-    provider: entity.provider ?? (payment ? 'pix' : null),
-    amountCents: payment?.amount_cents ?? null,
-    currency: payment?.currency ?? null,
+    provider: entity.provider ?? (payment ? 'pix' : stripe ? 'stripe' : null),
+    amountCents: payment?.amount_cents ?? stripe?.amount_cents ?? null,
+    currency: payment?.currency ?? stripe?.currency?.toUpperCase() ?? null,
     observedAt,
   }
 }

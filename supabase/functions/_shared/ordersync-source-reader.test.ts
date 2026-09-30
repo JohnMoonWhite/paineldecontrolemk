@@ -5,6 +5,7 @@ describe('readOrderSyncRecords', () => {
   it('reads exactly the approved OrdemSync fields without source emails or raw payments', async () => {
     const query = vi
       .fn()
+      .mockResolvedValue([])
       .mockResolvedValueOnce([{ id: 'profile-1', nome: 'Cliente', plano: 'Pro', subscription_status: 'active' }])
       .mockResolvedValueOnce([{ id: 'org-1', nome: 'Empresa', plano: 'Business', subscription_status: 'active', seats: 5 }])
       .mockResolvedValueOnce([{ org_id: 'org-1', user_id: 'profile-1', status: 'active' }])
@@ -16,7 +17,7 @@ describe('readOrderSyncRecords', () => {
     expect(records.organizations).toHaveLength(1)
     expect(records.organizationMembers).toHaveLength(1)
     expect(records.pixPayments).toHaveLength(1)
-    expect(query).toHaveBeenCalledTimes(4)
+    expect(query).toHaveBeenCalledTimes(5)
 
     const requestedColumns = query.mock.calls.map(([statement]) => statement).join(' ').toLowerCase()
     expect(requestedColumns).not.toContain('email')
@@ -25,11 +26,13 @@ describe('readOrderSyncRecords', () => {
     expect(requestedColumns).toContain('from public.organizations')
     expect(requestedColumns).toContain('from public.organization_members')
     expect(requestedColumns).toContain('from public.pix_payments')
+    expect(requestedColumns).toContain('from monitoring.stripe_subscriptions')
   })
 
   it('does not return a partial snapshot when one approved source query fails', async () => {
     const query = vi
       .fn()
+      .mockResolvedValue([])
       .mockResolvedValueOnce([])
       .mockRejectedValueOnce(new Error('permission denied'))
 
@@ -58,6 +61,7 @@ describe('readOrderSyncRecords', () => {
       organizations: [],
       organizationMembers: [],
       pixPayments: [],
+      stripeSubscriptions: [],
     })
   })
 
@@ -65,6 +69,7 @@ describe('readOrderSyncRecords', () => {
     const periodEnd = new Date('2026-10-15T12:00:00.000Z')
     const query = vi
       .fn()
+      .mockResolvedValue([])
       .mockResolvedValueOnce([
         { id: 'profile-1', subscription_status: 'active', current_period_end: periodEnd, trial_ends_at: null },
       ])
@@ -85,6 +90,7 @@ describe('readOrderSyncRecords', () => {
   it('skips memberships without a linked user, such as pending invites', async () => {
     const query = vi
       .fn()
+      .mockResolvedValue([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
@@ -96,5 +102,30 @@ describe('readOrderSyncRecords', () => {
     const records = await readOrderSyncRecords(query)
 
     expect(records.organizationMembers).toEqual([{ org_id: 'org-1', user_id: 'profile-1', status: 'active' }])
+  })
+
+  it('reads only the due date, value and status of Stripe subscriptions', async () => {
+    const periodEnd = new Date('2026-10-06T22:49:24.000Z')
+    const query = vi
+      .fn()
+      .mockResolvedValue([])
+      .mockResolvedValueOnce([{ id: 'profile-1', subscription_status: 'active', stripe_subscription_id: 'sub_1' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { subscription_id: 'sub_1', status: 'active', period_end: periodEnd, amount_cents: '4990', currency: 'brl' },
+      ])
+
+    const records = await readOrderSyncRecords(query)
+
+    expect(query).toHaveBeenCalledTimes(5)
+    const stripeStatement = String(query.mock.calls[4][0]).toLowerCase()
+    expect(stripeStatement).toContain('from monitoring.stripe_subscriptions')
+    expect(stripeStatement).not.toContain('payload')
+    expect(records.profiles[0].stripe_subscription_id).toBe('sub_1')
+    expect(records.stripeSubscriptions).toEqual([
+      { subscription_id: 'sub_1', status: 'active', period_end: '2026-10-06T22:49:24.000Z', amount_cents: 4990, currency: 'brl' },
+    ])
   })
 })
