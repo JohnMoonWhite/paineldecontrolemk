@@ -17,11 +17,21 @@ Em **Edge Functions → Secrets**, no projeto `egagpdfcyazjuzeofbbl`, mantenha:
 
 Crie a chave `monitoring_scheduler` em **Settings → API Keys** como uma chave secreta. Copie-a diretamente para `MONITORING_SCHEDULER_KEY`; ela nunca deve ir para o navegador, Git, SQL ou conversa.
 
-## Agendamento de cinco minutos
+## Agendamento e botão "Atualizar agora"
 
-Após publicar `sync-ordersync`, crie um Job em **Cron / Jobs** no projeto central para executá-la a cada cinco minutos. O pedido deve enviar o valor de `monitoring_scheduler` somente no cabeçalho `apikey`.
+A migration `monitoring_sync_dispatch` cria:
 
-O Job não deve apontar para o OrdemSync nem carregar credenciais do projeto fonte. Ele chama somente a função central `sync-ordersync`.
+- `private.dispatch_monitoring_syncs()`: chama `sync-<código>` para cada fonte de `monitoring_sources`, enviando a chave no cabeçalho `apikey`;
+- o Job `monitoring-sync-every-5-minutes` (pg_cron), que executa essa função a cada cinco minutos;
+- `public.request_monitoring_sync()`: usada pelo botão "Atualizar agora". Só admins do painel com MFA (aal2) podem chamá-la; uma coleta iniciada nos últimos 20 segundos é reaproveitada.
+
+A chave `monitoring_scheduler` fica no Vault do projeto central com o nome **`monitoring_scheduler_key`**. O nome é obrigatório:
+
+```sql
+select vault.create_secret('<chave sb_secret_...>', 'monitoring_scheduler_key');
+```
+
+Ela nunca deve ir para o navegador, Git ou conversa. Ao rotacionar a chave, atualize tanto o segredo `MONITORING_SCHEDULER_KEY` da Edge Function quanto o segredo do Vault.
 
 ## Verificação e recuperação
 

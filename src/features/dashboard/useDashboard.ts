@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getSupabaseClient } from '../../lib/supabase'
 import { DashboardAccessError, loadDashboard, type DashboardSnapshot } from './dashboard-data'
+import { requestSourceSync, waitForSourceSync } from './sync-request'
 
 export function useDashboard() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null)
@@ -8,7 +9,9 @@ export function useDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
   const [now, setNow] = useState(() => new Date())
+  const [syncing, setSyncing] = useState(false)
   const request = useRef<AbortController | null>(null)
+  const sync = useRef<AbortController | null>(null)
 
   const refresh = useCallback(async () => {
     if (request.current) return
@@ -33,6 +36,28 @@ export function useDashboard() {
     }
   }, [])
 
+  // Dispatches a fresh collection from every source, waits for it, then reloads the dashboard.
+  const syncNow = useCallback(async () => {
+    if (sync.current) return
+    const client = getSupabaseClient()
+    if (!client) { setError('A conexão do painel não está configurada.'); return }
+    const controller = new AbortController()
+    sync.current = controller
+    setSyncing(true)
+    let syncError: string | null = null
+    try {
+      const requestedAt = await requestSourceSync(client, controller.signal)
+      await waitForSourceSync(client, requestedAt, controller.signal)
+    } catch (cause) {
+      syncError = cause instanceof Error ? cause.message : 'Não foi possível solicitar uma nova coleta.'
+    }
+    if (controller.signal.aborted) return
+    await refresh()
+    if (syncError) setError(syncError)
+    sync.current = null
+    setSyncing(false)
+  }, [refresh])
+
   useEffect(() => {
     const initial = window.setTimeout(() => { void refresh() }, 0)
     const interval = window.setInterval(() => { if (!document.hidden) void refresh() }, 5 * 60000)
@@ -45,8 +70,9 @@ export function useDashboard() {
       window.clearTimeout(initial)
       window.removeEventListener('online', resume); document.removeEventListener('visibilitychange', resume)
       request.current?.abort(); request.current = null
+      sync.current?.abort(); sync.current = null
     }
   }, [refresh])
 
-  return { snapshot, error, refreshing, updatedAt, now, refresh }
+  return { snapshot, error, refreshing, syncing, updatedAt, now, refresh, syncNow }
 }
