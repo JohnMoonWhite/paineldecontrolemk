@@ -253,6 +253,13 @@ td strong { font-weight: 650; color: #f2f5fa; }
 .pagination { display: flex; align-items: center; justify-content: space-between; padding: 18px 26px; color: var(--muted); font-size: .8rem; }
 .pagination > div { display: flex; gap: 8px; }
 .dashboard-footer { display: flex; justify-content: space-between; gap: 15px; padding: 28px 0 10px; color: #9ca7ba; font-size: .76rem; }
+.update-banner { position: fixed; z-index: 50; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 16px; width: min(640px, calc(100vw - 32px)); padding: 14px 16px 14px 18px; border: 1px solid #2f5866; border-radius: 14px 4px 14px 4px; background: linear-gradient(135deg, #0f2a33, #12141c 55%); box-shadow: 0 18px 50px #000a; animation: update-in .35s ease-out; }
+.update-banner > .icon { width: 20px; color: var(--cyan); }
+.update-banner p { flex: 1; margin: 0; min-width: 0; }
+.update-banner strong { display: block; font-size: .86rem; }
+.update-banner span { display: block; margin-top: 2px; color: var(--muted); font-size: .75rem; }
+.update-banner .text-button { padding: 6px 4px; font-size: .8rem; }
+@keyframes update-in { from { opacity: 0; transform: translate(-50%, 16px); } }
 .skip-link { position: fixed; top: -100px; left: 20px; z-index: 100; background: var(--cyan); color: #000; padding: 12px; }
 .skip-link:focus { top: 20px; }
 .spinning { animation: spin 1.2s linear infinite; }
@@ -328,6 +335,9 @@ td strong { font-weight: 650; color: #f2f5fa; }
   .auth-content { max-width: none; padding: 34px; }
 }
 @media (max-width: 520px) {
+  .update-banner { flex-wrap: wrap; gap: 10px 12px; }
+  .update-banner p { flex-basis: calc(100% - 34px); }
+  .update-banner .primary-button { flex: 1; }
   .finance-grid { padding: 4px 20px 22px; row-gap: 22px; }
   .finance-metric { padding: 0 14px; }
   .finance-metric:nth-child(odd) { border-left: 0; padding-left: 0; }

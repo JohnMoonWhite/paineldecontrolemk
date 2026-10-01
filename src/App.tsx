@@ -5,10 +5,15 @@ import { PasswordRecoveryPage } from './features/auth/PasswordRecoveryPage'
 import { SetPasswordPage } from './features/auth/SetPasswordPage'
 import { passwordRecoveryErrorMessage } from './features/auth/recovery-flow'
 import { ExecutiveDashboard } from './features/dashboard/ExecutiveDashboard'
+import { UpdatePrompt } from './features/app/UpdatePrompt'
 import { getSupabaseClient } from './lib/supabase'
 import './index.css'
 
 function App() {
+  return <><Screen /><UpdatePrompt /></>
+}
+
+function Screen() {
   const [signedIn, setSignedIn] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)

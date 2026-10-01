@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // The app shows an "update available" prompt instead of switching versions silently.
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'brand/mkhub.png'],
       manifest: {
         name: 'MKHUB | Painel de controle',
