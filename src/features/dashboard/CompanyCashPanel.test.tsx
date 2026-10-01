@@ -30,7 +30,8 @@ describe('CompanyCashPanel', () => {
     expect(within(screen.getByText('Saídas do mês').closest('article')!).getByText('R$ 150,00')).toBeVisible()
     expect(within(screen.getByText('Resultado do mês').closest('article')!).getByText('R$ 399,90')).toBeVisible()
     expect(within(screen.getByText('Saldo atual').closest('article')!).getByText('R$ 1.429,80')).toBeVisible()
-    expect(screen.getByText(/Acumulado: R\$ 1\.599,80 em entradas · R\$ 170,00 em saídas/)).toBeVisible()
+    expect(screen.getByText('Entradas acumuladas').nextSibling).toHaveTextContent('R$ 1.599,80')
+    expect(screen.getByText('Saídas acumuladas').nextSibling).toHaveTextContent('R$ 170,00')
   })
 
   it('lists manual entries and system payments of the month', () => {
@@ -44,6 +45,7 @@ describe('CompanyCashPanel', () => {
   it('records a new expense with the amount in reais', async () => {
     const { onAdd } = renderPanel()
 
+    fireEvent.click(screen.getByRole('button', { name: '+ Novo lançamento' }))
     fireEvent.click(screen.getByRole('radio', { name: 'Saída' }))
     fireEvent.change(screen.getByLabelText('Descrição'), { target: { value: 'Hospedagem' } })
     fireEvent.change(screen.getByLabelText('Valor (R$)'), { target: { value: '1.234,56' } })

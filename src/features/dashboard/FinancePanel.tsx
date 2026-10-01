@@ -9,7 +9,7 @@ export function FinancePanel({ summary, available }: { summary: FinanceSummary; 
   const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
 
   return <section className="panel finance-panel" id="finance" aria-labelledby="finance-title">
-    <div className="section-heading"><div><h2 id="finance-title">Resumo financeiro</h2><p>Receita das assinaturas ativas, sem contas internas</p></div><span className="count-label">{available ? plural(summary.payingCount, 'assinatura pagante', 'assinaturas pagantes') : '—'}</span></div>
+    <div className="section-heading"><div><h2 id="finance-title">Receita recorrente</h2><p>Mensalidades das assinaturas ativas, sem contas internas</p></div><span className="count-label">{available ? plural(summary.payingCount, 'assinatura pagante', 'assinaturas pagantes') : '—'}</span></div>
     <div className="finance-grid">
       <FinanceMetric label="Receita mensal" value={value(summary.monthlyCents)} note="Soma das mensalidades vigentes" primary />
       <FinanceMetric label="Receita anual projetada" value={value(summary.annualCents)} note="Receita mensal × 12" />

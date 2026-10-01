@@ -11,11 +11,6 @@ const ledgerCategories = ['Saldo inicial', 'Serviços', 'Contratos', 'Infraestru
 const paymentMethods = [['pix', 'PIX'], ['credit_card', 'Cartão de crédito'], ['debit_card', 'Cartão de débito'], ['boleto', 'Boleto'], ['bank_transfer', 'Transferência'], ['cash', 'Dinheiro'], ['mercadopago', 'Mercado Pago'], ['stripe', 'Cartão (Stripe)'], ['other', 'Outro']] as const
 const methodLabels: Record<string, string> = Object.fromEntries(paymentMethods)
 
-function formatDay(date: string) {
-  const [year, month, day] = date.split('-')
-  return `${day}/${month}/${year}`
-}
-
 export function CompanyCashPanel({ summary, month, onMonthChange, customerName, sourceName, onAdd, onRemove }: {
   summary: LedgerSummary
   month: string
@@ -32,6 +27,7 @@ export function CompanyCashPanel({ summary, month, onMonthChange, customerName, 
   const [category, setCategory] = useState('')
   const [method, setMethod] = useState('pix')
   const [saving, setSaving] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
   async function submit(event: FormEvent) {
@@ -43,7 +39,7 @@ export function CompanyCashPanel({ summary, month, onMonthChange, customerName, 
     setSaving(true); setFormError(null)
     try {
       await onAdd({ kind, description: description.trim(), amount_cents: amountCents, entry_date: date, category: category.trim() || null, payment_method: method })
-      setDescription(''); setAmount(''); setCategory('')
+      setDescription(''); setAmount(''); setCategory(''); setFormOpen(false)
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Não foi possível salvar o lançamento.')
     } finally {
@@ -52,41 +48,70 @@ export function CompanyCashPanel({ summary, month, onMonthChange, customerName, 
   }
 
   const { month: current, totals } = summary
+  const flowTotal = current.incomeCents + current.expenseCents
+  const incomeShare = flowTotal ? Math.round(current.incomeCents / flowTotal * 100) : 0
   return <section className="panel cash-panel" id="cash" aria-labelledby="cash-title">
-    <div className="section-heading"><div><h2 id="cash-title">Caixa da empresa</h2><p>Lançamentos manuais e pagamentos recebidos pelos sistemas</p></div><label className="month-picker"><span>Mês</span><input type="month" value={month} onChange={event => event.target.value && onMonthChange(event.target.value)} /></label></div>
-    <div className="finance-grid">
-      <CashMetric label="Entradas do mês" value={money(current.incomeCents)} note={`${money(current.systemIncomeCents)} dos sistemas · ${money(current.manualIncomeCents)} manuais`} tone="income" />
-      <CashMetric label="Saídas do mês" value={money(current.expenseCents)} note="Lançamentos de despesa" tone="expense" />
-      <CashMetric label="Resultado do mês" value={money(current.resultCents)} note="Entradas − saídas" tone={current.resultCents < 0 ? 'expense' : 'income'} />
-      <CashMetric label="Saldo atual" value={money(totals.balanceCents)} note={`Acumulado: ${money(totals.incomeCents)} em entradas · ${money(totals.expenseCents)} em saídas`} tone={totals.balanceCents < 0 ? 'expense' : 'primary'} />
+    <div className="cash-head">
+      <div><h2 id="cash-title">Caixa da empresa</h2><p>Lançamentos manuais e pagamentos recebidos pelos sistemas</p></div>
+      <div className="cash-actions">
+        <label className="month-picker"><span>Mês</span><input type="month" value={month} onChange={event => event.target.value && onMonthChange(event.target.value)} /></label>
+        <button className="primary-button" type="button" aria-expanded={formOpen} aria-controls="cash-form" onClick={() => setFormOpen(open => !open)}>{formOpen ? 'Fechar' : '+ Novo lançamento'}</button>
+      </div>
     </div>
-    <form className="cash-form" onSubmit={event => void submit(event)} aria-label="Novo lançamento">
+    <div className="cash-overview">
+      <article className={`cash-balance${totals.balanceCents < 0 ? ' cash-balance--negative' : ''}`}>
+        <span>Saldo atual</span>
+        <strong>{money(totals.balanceCents)}</strong>
+        <dl className="cash-totals">
+          <div><dt>Entradas acumuladas</dt><dd>{money(totals.incomeCents)}</dd></div>
+          <div><dt>Saídas acumuladas</dt><dd>{money(totals.expenseCents)}</dd></div>
+        </dl>
+      </article>
+      <div className="cash-month">
+        <p className="cash-month-label">Movimento de {monthLabel(month)}</p>
+        <div className="cash-month-grid">
+          <CashMetric label="Entradas do mês" value={money(current.incomeCents)} note={`${money(current.systemIncomeCents)} dos sistemas · ${money(current.manualIncomeCents)} manuais`} tone="income" />
+          <CashMetric label="Saídas do mês" value={money(current.expenseCents)} note="Despesas lançadas" tone="expense" />
+          <CashMetric label="Resultado do mês" value={money(current.resultCents)} note="Entradas − saídas" tone={current.resultCents < 0 ? 'expense' : 'neutral'} />
+        </div>
+        <div className="cash-flow" aria-hidden="true">{flowTotal ? <><span style={{ width: `${incomeShare}%` }} /><span style={{ width: `${100 - incomeShare}%` }} /></> : null}</div>
+      </div>
+    </div>
+    {formOpen ? <form className="cash-form" id="cash-form" onSubmit={event => void submit(event)} aria-label="Novo lançamento">
       <fieldset className="kind-toggle"><legend>Tipo</legend>
         <label><input type="radio" name="kind" checked={kind === 'income'} onChange={() => setKind('income')} />Entrada</label>
         <label><input type="radio" name="kind" checked={kind === 'expense'} onChange={() => setKind('expense')} />Saída</label>
       </fieldset>
-      <label>Descrição<input value={description} onChange={event => setDescription(event.target.value)} placeholder="Ex.: Hospedagem, contrato fazenda" /></label>
+      <label className="cash-form__wide">Descrição<input value={description} onChange={event => setDescription(event.target.value)} placeholder="Ex.: Hospedagem, contrato fazenda" /></label>
       <label>Valor (R$)<input inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} placeholder="0,00" /></label>
       <label>Data<input type="date" value={date} onChange={event => setDate(event.target.value)} /></label>
       <label>Categoria<input list="ledger-categories" value={category} onChange={event => setCategory(event.target.value)} placeholder="Ex.: Infraestrutura" /><datalist id="ledger-categories">{ledgerCategories.map(item => <option key={item} value={item} />)}</datalist></label>
       <label>Forma<select value={method} onChange={event => setMethod(event.target.value)}>{paymentMethods.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-      <button className="secondary-button" disabled={saving} type="submit">{saving ? 'Salvando…' : 'Lançar'}</button>
+      <button className="primary-button" disabled={saving} type="submit">{saving ? 'Salvando…' : 'Lançar'}</button>
       {formError ? <p className="form-error" role="alert">{formError}</p> : null}
-    </form>
-    {summary.movements.length ? <div className="table-scroll"><table className="cash-table"><thead><tr><th>Data</th><th>Descrição</th><th>Origem</th><th>Valor</th><th><span className="visually-hidden">Ações</span></th></tr></thead><tbody>{summary.movements.map(item => {
-      const signed = `${item.kind === 'expense' ? '− ' : '+ '}${money(item.amount_cents)}`
-      return <tr key={item.key}>
-        <td>{formatDay(item.date)}</td>
-        <td>{item.entry ? <><strong>{item.entry.description}</strong>{item.entry.category ? <span className="table-secondary">{item.entry.category}</span> : null}</> : <><strong>Assinatura {customerName(item)}</strong><span className="table-secondary">Pagamento recebido automaticamente</span></>}</td>
-        <td>{item.entry ? `Manual · ${methodLabels[item.entry.payment_method ?? ''] ?? 'Não informado'}` : `${sourceName(item)} · ${paymentMethodLabel(item.payment?.method)}`}</td>
-        <td className={item.kind === 'expense' ? 'amount-expense' : 'amount-income'}>{signed}</td>
-        <td>{item.entry ? <button className="text-button" type="button" onClick={() => { if (window.confirm(`Excluir o lançamento "${item.entry!.description}"?`)) void onRemove(item.entry!.id) }}>Excluir</button> : null}</td>
-      </tr>
-    })}</tbody></table></div> : <div className="empty-state"><p>Nenhuma movimentação neste mês.</p></div>}
+    </form> : null}
+    {summary.movements.length ? <ol className="cash-list" aria-label={`Movimentações de ${monthLabel(month)}`}>{summary.movements.map(item => {
+      const [, monthPart, day] = item.date.split('-')
+      return <li key={item.key} className={`cash-item cash-item--${item.kind}`}>
+        <time className="cash-date" dateTime={item.date}><b>{day}</b>{shortMonths[Number(monthPart) - 1]}</time>
+        <div className="cash-item__body">
+          {item.entry ? <><strong>{item.entry.description}</strong><span>{[item.entry.category, `Manual · ${methodLabels[item.entry.payment_method ?? ''] ?? 'Não informado'}`].filter(Boolean).join(' · ')}</span></>
+            : <><strong>Assinatura {customerName(item)}</strong><span>{sourceName(item)} · {paymentMethodLabel(item.payment?.method)} · automático</span></>}
+        </div>
+        <span className="cash-amount">{item.kind === 'expense' ? '−' : '+'} {money(item.amount_cents)}</span>
+        {item.entry ? <button className="cash-remove" type="button" aria-label={`Excluir ${item.entry.description}`} title="Excluir lançamento" onClick={() => { if (window.confirm(`Excluir o lançamento "${item.entry!.description}"?`)) void onRemove(item.entry!.id) }}>×</button> : <span className="cash-remove" aria-hidden="true" />}
+      </li>
+    })}</ol> : <div className="empty-state"><p>Nenhuma movimentação em {monthLabel(month)}.</p></div>}
     <p className="table-note">O saldo atual soma tudo o que entrou menos tudo o que saiu até hoje. Para ele bater com a conta bancária, lance um "Saldo inicial" com o valor em caixa antes do primeiro lançamento.</p>
   </section>
 }
 
-function CashMetric({ label, value, note, tone }: { label: string; value: string; note: string; tone: 'income' | 'expense' | 'primary' }) {
-  return <article className={`finance-metric cash-metric--${tone}`}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>
+const shortMonths = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+
+function monthLabel(month: string) {
+  return new Date(`${month}-15T12:00:00Z`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+}
+
+function CashMetric({ label, value, note, tone }: { label: string; value: string; note: string; tone: 'income' | 'expense' | 'neutral' }) {
+  return <article className={`cash-metric cash-metric--${tone}`}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>
 }
