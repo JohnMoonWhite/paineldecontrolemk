@@ -17,7 +17,7 @@ export async function loadDashboard(client: SupabaseClient, signal: AbortSignal)
     loadAllFacts(client, signal),
     client.from('monitoring_sources').select('id,code,name,status,last_success_at').order('name').abortSignal(signal),
     client.from('monitoring_finance_exclusions').select('source_id,external_id,entity_kind').abortSignal(signal),
-    client.from('monitoring_manual_amounts').select('source_id,external_id,entity_kind,amount_cents').abortSignal(signal),
+    client.from('monitoring_manual_amounts').select('source_id,external_id,entity_kind,amount_cents,billing_months').abortSignal(signal),
   ])
   if (sourcesResult.error) throw new Error('Não foi possível consultar os projetos. Tente atualizar novamente.')
   if (exclusionsResult.error || manualResult.error) throw new Error('Não foi possível consultar os ajustes financeiros. Tente atualizar novamente.')
@@ -34,7 +34,7 @@ export async function loadAllFacts(client: SupabaseClient, signal: AbortSignal):
   const pageSize = 500
   for (let offset = 0; ; offset += pageSize) {
     const { data, error } = await client.from('monitoring_subscription_facts')
-      .select('source_id,external_id,entity_kind,display_name,plan,status,period_end_at,trial_end_at,seat_count,provider,amount_cents,currency')
+      .select('source_id,external_id,entity_kind,display_name,plan,status,period_end_at,trial_end_at,seat_count,provider,amount_cents,currency,cancel_at_period_end,payment_method,payments_count,first_paid_at,last_paid_at')
       .eq('is_current', true).order('id').range(offset, offset + pageSize - 1).abortSignal(signal)
     if (error) throw new Error('Não foi possível consultar todas as assinaturas. A última leitura foi preservada.')
     const rows = (data ?? []) as DashboardFact[]

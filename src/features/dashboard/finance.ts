@@ -1,7 +1,8 @@
 import { factState, type DashboardFact } from './dashboard-query'
 
 export type FinanceExclusion = { source_id: string; external_id: string; entity_kind: string }
-export type ManualAmount = FinanceExclusion & { amount_cents: number }
+/** Value charged per billing cycle; `billing_months` is 12 for an annual plan. */
+export type ManualAmount = FinanceExclusion & { amount_cents: number; billing_months?: number | null }
 
 export type FinanceSummary = {
   payingCount: number
@@ -11,6 +12,8 @@ export type FinanceSummary = {
   estimatedCount: number
   manualCents: number
   manualCount: number
+  /** Subscriptions paid for several months at once, counted at their monthly share. */
+  spreadCount: number
   annualCents: number
   averageTicketCents: number
   renewalsNext30Cents: number
@@ -43,7 +46,7 @@ export function summarizeFinance(
   manualAmounts: ManualAmount[] = [],
 ): FinanceSummary {
   const excluded = new Set(exclusions.map(exclusionKey))
-  const manual = new Map(manualAmounts.map(item => [exclusionKey(item), item.amount_cents]))
+  const manual = new Map(manualAmounts.map(item => [exclusionKey(item), item]))
   const excludedNames: string[] = []
   const active: DashboardFact[] = []
   let expiredActiveCount = 0
@@ -62,6 +65,7 @@ export function summarizeFinance(
   let estimatedCount = 0
   let manualCents = 0
   let manualCount = 0
+  let spreadCount = 0
   let renewalsNext30Cents = 0
   let renewalsNext30Count = 0
   const withoutValue: string[] = []
@@ -69,14 +73,18 @@ export function summarizeFinance(
   for (const fact of active) {
     const confirmed = fact.amount_cents ?? null
     const informed = confirmed === null ? manual.get(exclusionKey(fact)) ?? null : null
-    const amount = confirmed ?? informed ?? referencePrice.get(planKey(fact)) ?? null
-    if (amount === null) { withoutValue.push(fact.display_name?.trim() || fact.external_id); continue }
+    const billingMonths = Math.max(1, informed?.billing_months ?? 1)
+    const cycleAmount = confirmed ?? informed?.amount_cents ?? referencePrice.get(planKey(fact)) ?? null
+    if (cycleAmount === null) { withoutValue.push(fact.display_name?.trim() || fact.external_id); continue }
+    const amount = Math.round(cycleAmount / billingMonths)
+    if (billingMonths > 1) spreadCount++
     if (confirmed !== null) confirmedCents += amount
-    else if (informed !== null) { manualCents += amount; manualCount++ }
+    else if (informed) { manualCents += amount; manualCount++ }
     else { estimatedCents += amount; estimatedCount++ }
 
+    // A renewal charges the whole cycle, so an annual plan renews at its full value.
     const periodEnd = fact.period_end_at ? Date.parse(fact.period_end_at) : NaN
-    if (Number.isFinite(periodEnd) && periodEnd <= renewalLimit) { renewalsNext30Cents += amount; renewalsNext30Count++ }
+    if (Number.isFinite(periodEnd) && periodEnd <= renewalLimit) { renewalsNext30Cents += cycleAmount; renewalsNext30Count++ }
   }
 
   const monthlyCents = confirmedCents + manualCents + estimatedCents
@@ -89,6 +97,7 @@ export function summarizeFinance(
     estimatedCount,
     manualCents,
     manualCount,
+    spreadCount,
     annualCents: monthlyCents * 12,
     averageTicketCents: valued ? Math.round(monthlyCents / valued) : 0,
     renewalsNext30Cents,

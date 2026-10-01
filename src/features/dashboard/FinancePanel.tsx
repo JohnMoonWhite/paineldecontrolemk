@@ -18,6 +18,7 @@ export function FinancePanel({ summary, available }: { summary: FinanceSummary; 
     </div>
     {available ? <ul className="finance-notes">
       <li>{money(summary.confirmedCents)} confirmados por pagamento{summary.manualCount ? ` · ${money(summary.manualCents)} informados manualmente (${plural(summary.manualCount, 'assinatura', 'assinaturas')})` : ''}{summary.estimatedCount ? ` · ${money(summary.estimatedCents)} de ${plural(summary.estimatedCount, 'assinatura estimada', 'assinaturas estimadas')} pelo valor do plano` : ''}.</li>
+      {summary.spreadCount ? <li>{plural(summary.spreadCount, 'plano anual entra', 'planos anuais entram')} pela parcela mensal (valor ÷ 12).</li> : null}
       {summary.withoutValue.length ? <li className="finance-notes__warning">Sem valor registrado, fora da soma: {summary.withoutValue.join(', ')}.</li> : null}
       {summary.expiredActiveCount ? <li className="finance-notes__warning">{plural(summary.expiredActiveCount, 'assinatura ativa está vencida', 'assinaturas ativas estão vencidas')} e ficou fora da receita.</li> : null}
     </ul> : null}

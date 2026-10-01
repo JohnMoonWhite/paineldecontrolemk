@@ -200,4 +200,34 @@ describe('normalizeOrderSync', () => {
       status: 'active',
     }))
   })
+
+  it('summarizes the payment history and method of each customer', () => {
+    const facts = normalizeOrderSync(
+      {
+        organizations: [],
+        organizationMembers: [],
+        profiles: [
+          { id: 'pix-user', nome: 'Pix', plano: 'pro', subscription_status: 'active', payment_provider: 'mercadopago' },
+          { id: 'card-user', nome: 'Card', plano: 'pro', subscription_status: 'active', stripe_subscription_id: 'sub_1' },
+          { id: 'free-user', nome: 'Free', plano: 'gratuito', subscription_status: 'trialing' },
+        ],
+        pixPayments: [
+          { user_id: 'pix-user', org_id: null, status: 'approved', plan: 'monthly', amount_cents: 4990, currency: null, access_ends_at: '2026-08-01T00:00:00.000Z', paid_at: '2026-07-01T00:00:00.000Z' },
+          { user_id: 'pix-user', org_id: null, status: 'approved', plan: 'monthly', amount_cents: 4990, currency: null, access_ends_at: '2026-09-01T00:00:00.000Z', paid_at: '2026-08-01T00:00:00.000Z' },
+          { user_id: 'pix-user', org_id: null, status: 'cancelled', plan: 'monthly', amount_cents: 4990, currency: null, access_ends_at: null, paid_at: null },
+        ],
+        stripeSubscriptions: [
+          { subscription_id: 'sub_1', status: 'active', period_end: '2026-10-06T00:00:00.000Z', amount_cents: 4990, currency: 'brl' },
+        ],
+      },
+      observedAt,
+    )
+
+    const byId = Object.fromEntries(facts.map((fact) => [fact.externalId, fact]))
+    expect(byId['pix-user']).toEqual(expect.objectContaining({
+      paymentMethod: 'pix', paymentsCount: 2, firstPaidAt: '2026-07-01T00:00:00.000Z', lastPaidAt: '2026-08-01T00:00:00.000Z',
+    }))
+    expect(byId['card-user']).toEqual(expect.objectContaining({ paymentMethod: 'stripe', paymentsCount: 0 }))
+    expect(byId['free-user']).toEqual(expect.objectContaining({ paymentMethod: null, paymentsCount: 0, firstPaidAt: null }))
+  })
 })

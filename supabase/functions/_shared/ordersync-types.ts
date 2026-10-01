@@ -70,5 +70,10 @@ export type NormalizedSubscriptionFact = {
   amountCents: number | null
   currency: string | null
   provider: string | null
+  /** How the customer pays: 'pix', 'stripe' (card) or the source's provider when unknown. */
+  paymentMethod: string | null
+  paymentsCount: number
+  firstPaidAt: string | null
+  lastPaidAt: string | null
   observedAt: string
 }

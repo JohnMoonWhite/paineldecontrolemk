@@ -20,16 +20,17 @@ export function normalizeOrderSync(
       .map((membership) => membership.user_id),
   )
   const paymentsByOwner = buildPaidPaymentIndex(records.pixPayments)
+  const historyByOwner = buildPaymentHistory(records.pixPayments)
   const stripeById = new Map((records.stripeSubscriptions ?? []).map((item) => [item.subscription_id, item]))
   const stripeFor = (id: string | null | undefined) => (id ? stripeById.get(id) : undefined)
 
   const organizations = records.organizations
-    .map((organization) => normalizeOrganization(organization, paymentsByOwner.get('organization:' + organization.id), stripeFor(organization.stripe_subscription_id), observedAt))
+    .map((organization) => normalizeOrganization(organization, paymentsByOwner.get('organization:' + organization.id), stripeFor(organization.stripe_subscription_id), historyByOwner.get('organization:' + organization.id), observedAt))
     .filter((fact): fact is NormalizedSubscriptionFact => fact !== null)
 
   const individuals = records.profiles
     .filter((profile) => !activeMemberIds.has(profile.id))
-    .map((profile) => normalizeProfile(profile, paymentsByOwner.get('individual:' + profile.id), stripeFor(profile.stripe_subscription_id), observedAt))
+    .map((profile) => normalizeProfile(profile, paymentsByOwner.get('individual:' + profile.id), stripeFor(profile.stripe_subscription_id), historyByOwner.get('individual:' + profile.id), observedAt))
     .filter((fact): fact is NormalizedSubscriptionFact => fact !== null)
 
   return [...organizations, ...individuals]
@@ -39,6 +40,7 @@ function normalizeOrganization(
   organization: OrderSyncOrganization,
   payment: OrderSyncPixPayment | undefined,
   stripe: OrderSyncStripeSubscription | undefined,
+  history: PaymentHistory | undefined,
   observedAt: string,
 ): NormalizedSubscriptionFact | null {
   return normalizeEntity(
@@ -56,6 +58,7 @@ function normalizeOrganization(
     },
     payment,
     stripe,
+    history,
     observedAt,
   )
 }
@@ -64,6 +67,7 @@ function normalizeProfile(
   profile: OrderSyncProfile,
   payment: OrderSyncPixPayment | undefined,
   stripe: OrderSyncStripeSubscription | undefined,
+  history: PaymentHistory | undefined,
   observedAt: string,
 ): NormalizedSubscriptionFact | null {
   return normalizeEntity(
@@ -81,14 +85,21 @@ function normalizeProfile(
     },
     payment,
     stripe,
+    history,
     observedAt,
   )
 }
 
+type EntityFields = Omit<
+  NormalizedSubscriptionFact,
+  'amountCents' | 'currency' | 'observedAt' | 'paymentMethod' | 'paymentsCount' | 'firstPaidAt' | 'lastPaidAt'
+> & { status: string | null }
+
 function normalizeEntity(
-  entity: Omit<NormalizedSubscriptionFact, 'amountCents' | 'currency' | 'observedAt'> & { status: string | null },
+  entity: EntityFields,
   payment: OrderSyncPixPayment | undefined,
   stripe: OrderSyncStripeSubscription | undefined,
+  history: PaymentHistory | undefined,
   observedAt: string,
 ): NormalizedSubscriptionFact | null {
   const status = entity.status ?? payment?.status ?? stripe?.status
@@ -105,8 +116,42 @@ function normalizeEntity(
     provider: entity.provider ?? (payment ? 'pix' : stripe ? 'stripe' : null),
     amountCents: payment?.amount_cents ?? stripe?.amount_cents ?? null,
     currency: payment?.currency ?? stripe?.currency?.toUpperCase() ?? null,
+    paymentMethod: history ? 'pix' : stripe ? 'stripe' : entity.provider ?? null,
+    paymentsCount: history?.count ?? 0,
+    firstPaidAt: history?.firstPaidAt ?? null,
+    lastPaidAt: history?.lastPaidAt ?? null,
     observedAt,
   }
+}
+
+type PaymentHistory = { count: number; firstPaidAt: string | null; lastPaidAt: string | null }
+
+/** Approved Pix payments per owner: how many, and the first and latest payment dates. */
+function buildPaymentHistory(payments: OrderSyncPixPayment[]): Map<string, PaymentHistory> {
+  const history = new Map<string, PaymentHistory>()
+
+  for (const payment of payments) {
+    if (!paidPaymentStatuses.has(normalizeStatus(payment.status))) {
+      continue
+    }
+
+    const key = payment.org_id
+      ? 'organization:' + payment.org_id
+      : payment.user_id
+        ? 'individual:' + payment.user_id
+        : null
+    if (!key) {
+      continue
+    }
+
+    const current = history.get(key) ?? { count: 0, firstPaidAt: null, lastPaidAt: null }
+    current.count++
+    if (payment.paid_at && (!current.firstPaidAt || payment.paid_at < current.firstPaidAt)) current.firstPaidAt = payment.paid_at
+    if (payment.paid_at && (!current.lastPaidAt || payment.paid_at > current.lastPaidAt)) current.lastPaidAt = payment.paid_at
+    history.set(key, current)
+  }
+
+  return history
 }
 
 function buildPaidPaymentIndex(payments: OrderSyncPixPayment[]): Map<string, OrderSyncPixPayment> {

@@ -102,4 +102,16 @@ describe('summarizeFinance', () => {
     expect(summary.monthlyCents).toBe(5990)
     expect(summary.manualCount).toBe(0)
   })
+
+  it('spreads an annual payment over twelve months and renews it at the full value', () => {
+    const summary = summarizeFinance([
+      fact({ external_id: 'annual', amount_cents: null, period_end_at: '2026-10-15T00:00:00Z', display_name: 'SAMUEL DOURADO' }),
+    ], [], now, [{ source_id: 's1', external_id: 'annual', entity_kind: 'individual', amount_cents: 47880, billing_months: 12 }])
+
+    expect(summary.monthlyCents).toBe(3990)
+    expect(summary.manualCents).toBe(3990)
+    expect(summary.annualCents).toBe(47880)
+    expect(summary.renewalsNext30Cents).toBe(47880)
+    expect(summary.spreadCount).toBe(1)
+  })
 })

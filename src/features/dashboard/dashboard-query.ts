@@ -11,6 +11,11 @@ export type DashboardFact = {
   provider: string | null
   amount_cents?: number | null
   currency?: string | null
+  cancel_at_period_end?: boolean | null
+  payment_method?: string | null
+  payments_count?: number | null
+  first_paid_at?: string | null
+  last_paid_at?: string | null
 }
 
 export type SubscriptionHealth = {

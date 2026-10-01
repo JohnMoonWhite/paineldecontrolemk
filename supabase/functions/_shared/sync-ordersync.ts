@@ -14,6 +14,10 @@ export type SnapshotFact = {
   amount_cents: number | null
   currency: string | null
   provider: string | null
+  payment_method: string | null
+  payments_count: number
+  first_paid_at: string | null
+  last_paid_at: string | null
 }
 
 type Dependencies = {
@@ -52,6 +56,10 @@ function toSnapshotFact(fact: NormalizedSubscriptionFact): SnapshotFact {
     amount_cents: fact.amountCents,
     currency: fact.currency,
     provider: fact.provider,
+    payment_method: fact.paymentMethod,
+    payments_count: fact.paymentsCount,
+    first_paid_at: fact.firstPaidAt,
+    last_paid_at: fact.lastPaidAt,
   }
 }
 
