@@ -1,22 +1,39 @@
 import { useMemo, useState } from 'react'
 import { Brand } from '../../components/Brand'
 import { Icon } from '../../components/Icon'
+import { CompanyCashPanel, type NewLedgerEntry } from './CompanyCashPanel'
 import { FinancePanel } from './FinancePanel'
 import { SubscriptionHealth } from './SubscriptionHealth'
 import { SubscriptionTable } from './SubscriptionTable'
 import { summarizeSubscriptionHealth } from './dashboard-query'
 import { sourceHealth } from './dashboard-data'
 import { summarizeFinance, withoutExcluded } from './finance'
+import { summarizeLedger, toBusinessDate } from './ledger'
+import { addLedgerEntry, removeLedgerEntry } from './ledger-data'
+import { getSupabaseClient } from '../../lib/supabase'
 import { useDashboard } from './useDashboard'
 
 const sourceLabels = { healthy: 'Em dia', warning: 'Atenção', stale: 'Desatualizado', pending: 'Sem sincronização' }
 
 export function ExecutiveDashboard({ onSignOut }: { onSignOut: () => void }) {
   const data = useDashboard()
-  return <DashboardView {...data} onSignOut={onSignOut} />
+  const withClient = async (action: (client: NonNullable<ReturnType<typeof getSupabaseClient>>) => Promise<void>) => {
+    const client = getSupabaseClient()
+    if (!client) throw new Error('A conexão do painel não está configurada.')
+    await action(client)
+    await data.refresh()
+  }
+  return <DashboardView {...data} onSignOut={onSignOut}
+    onAddEntry={entry => withClient(client => addLedgerEntry(client, entry))}
+    onRemoveEntry={entryId => withClient(client => removeLedgerEntry(client, entryId))} />
 }
 
-export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt, now, syncNow, onSignOut }: ReturnType<typeof useDashboard> & { onSignOut: () => void }) {
+export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt, now, syncNow, onSignOut, onAddEntry = async () => {}, onRemoveEntry = async () => {} }: ReturnType<typeof useDashboard> & {
+  onSignOut: () => void
+  onAddEntry?: (entry: NewLedgerEntry) => Promise<void>
+  onRemoveEntry?: (entryId: string) => Promise<void>
+}) {
+  const [cashMonth, setCashMonth] = useState(() => toBusinessDate(new Date()).slice(0, 7))
   const [sourceId, setSourceId] = useState('all')
   const sources = snapshot?.sources ?? []
   const selectedSources = sources.filter(source => sourceId === 'all' || source.id === sourceId)
@@ -26,6 +43,15 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
   const facts = useMemo(() => withoutExcluded(sourceFacts, snapshot?.exclusions ?? []), [sourceFacts, snapshot])
   const health = summarizeSubscriptionHealth(facts, now)
   const finance = summarizeFinance(sourceFacts, snapshot?.exclusions ?? [], now, snapshot?.manualAmounts ?? [])
+  // The company cash view covers every project, so it ignores the project filter.
+  const cash = summarizeLedger({
+    entries: snapshot?.ledgerEntries ?? [],
+    payments: snapshot?.payments ?? [],
+    exclusions: snapshot?.exclusions ?? [],
+    month: cashMonth,
+    today: toBusinessDate(now),
+  })
+  const customerNames = useMemo(() => new Map((snapshot?.facts ?? []).map(fact => [`${fact.source_id}:${fact.entity_kind}:${fact.external_id}`, fact.display_name?.trim() || 'sem nome'])), [snapshot])
   const hasData = sourceFacts.length > 0 || selectedSources.some(source => source.last_success_at)
   const needsAttention = selectedSources.some(source => sourceHealth(source, now) !== 'healthy')
 
@@ -36,7 +62,8 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
       <nav aria-label="Navegação principal">
         <a className="nav-link nav-link--primary" href="#overview"><Icon name="overview" />Visão geral</a>
         <a className="nav-link" href="#projects"><Icon name="projects" />Projetos<span>{sources.length || '—'}</span></a>
-        <a className="nav-link" href="#finance"><Icon name="finance" />Financeiro</a>
+        <a className="nav-link" href="#cash"><Icon name="finance" />Caixa</a>
+        <a className="nav-link" href="#finance"><Icon name="subscriptions" />Receita</a>
         <a className="nav-link" href="#subscriptions"><Icon name="subscriptions" />Assinaturas</a>
       </nav>
       <button className="nav-link signout-button" onClick={onSignOut} type="button"><Icon name="logout" /><span>Sair da conta</span></button>
@@ -64,6 +91,10 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
           </section>
           <section className="panel portfolio-panel" aria-labelledby="portfolio-title"><div className="section-heading"><div><h2 id="portfolio-title">Sua carteira</h2><p>Composição das assinaturas</p></div></div><div className="portfolio-total"><strong>{hasData ? facts.length.toLocaleString('pt-BR') : '—'}</strong><span>assinaturas identificadas</span></div><div className="portfolio-bar" aria-hidden="true">{facts.length ? <><span style={{ width: `${health.individuals / facts.length * 100}%` }} /><span style={{ width: `${health.organizations / facts.length * 100}%` }} /></> : null}</div><dl className="portfolio-breakdown"><div><dt><i />Individuais</dt><dd>{hasData ? health.individuals : '—'}</dd></div><div><dt><i />Empresariais</dt><dd>{hasData ? health.organizations : '—'}</dd></div></dl><p className="portfolio-note">Cada assinatura empresarial conta uma vez, independentemente da quantidade de membros.{finance.excludedNames.length ? ` Contas internas fora dos números: ${finance.excludedNames.join(', ')}.` : ''}</p></section>
         </div>
+        {snapshot ? <CompanyCashPanel summary={cash} month={cashMonth} onMonthChange={setCashMonth}
+          customerName={item => customerNames.get(`${item.payment?.source_id}:${item.payment?.entity_kind}:${item.payment?.external_id}`) ?? 'sem nome'}
+          sourceName={item => sources.find(source => source.id === item.payment?.source_id)?.name ?? 'Sistema'}
+          onAdd={onAddEntry} onRemove={onRemoveEntry} /> : null}
         <FinancePanel summary={finance} available={hasData} />
         <SubscriptionTable key={sourceId} facts={facts} sources={sources} now={now} />
         <footer className="dashboard-footer"><span>MKHUB. Clareza para decidir.</span><span>Horários exibidos no seu fuso local</span></footer>

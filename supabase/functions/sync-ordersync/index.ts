@@ -36,6 +36,18 @@ async function synchronizeOrderSync() {
 
       return data
     },
+    replacePayments: async (payments) => {
+      const { data, error } = await central.rpc('replace_monitoring_payments', {
+        p_source_code: sourceCode,
+        p_payments: payments,
+      })
+
+      if (error || typeof data !== 'number') {
+        throw new Error('MONITORING_CENTRAL_WRITE_FAILED')
+      }
+
+      return data
+    },
     recordFailure: async (summary) => {
       const { error } = await central.rpc('record_monitoring_sync_failure', {
         p_source_code: sourceCode,

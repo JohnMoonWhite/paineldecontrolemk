@@ -17,7 +17,7 @@ describe('readOrderSyncRecords', () => {
     expect(records.organizations).toHaveLength(1)
     expect(records.organizationMembers).toHaveLength(1)
     expect(records.pixPayments).toHaveLength(1)
-    expect(query).toHaveBeenCalledTimes(5)
+    expect(query).toHaveBeenCalledTimes(6)
 
     const requestedColumns = query.mock.calls.map(([statement]) => statement).join(' ').toLowerCase()
     expect(requestedColumns).not.toContain('email')
@@ -62,6 +62,7 @@ describe('readOrderSyncRecords', () => {
       organizationMembers: [],
       pixPayments: [],
       stripeSubscriptions: [],
+      stripePayments: [],
     })
   })
 
@@ -119,7 +120,7 @@ describe('readOrderSyncRecords', () => {
 
     const records = await readOrderSyncRecords(query)
 
-    expect(query).toHaveBeenCalledTimes(5)
+    expect(query).toHaveBeenCalledTimes(6)
     const stripeStatement = String(query.mock.calls[4][0]).toLowerCase()
     expect(stripeStatement).toContain('from monitoring.stripe_subscriptions')
     expect(stripeStatement).not.toContain('payload')
@@ -127,5 +128,27 @@ describe('readOrderSyncRecords', () => {
     expect(records.stripeSubscriptions).toEqual([
       { subscription_id: 'sub_1', status: 'active', period_end: '2026-10-06T22:49:24.000Z', amount_cents: 4990, currency: 'brl' },
     ])
+  })
+
+  it('reads paid Stripe periods, and treats a missing payments view as no Stripe payments', async () => {
+    const paidAt = new Date('2026-09-06T22:49:24.000Z')
+    const withView = vi.fn().mockResolvedValue([])
+    withView.mockImplementation(async (statement: string) =>
+      statement.includes('monitoring.stripe_payments')
+        ? [{ subscription_id: 'sub_1', paid_at: paidAt, amount_cents: '4990', currency: 'brl' }]
+        : [])
+
+    const records = await readOrderSyncRecords(withView)
+    expect(records.stripePayments).toEqual([
+      { subscription_id: 'sub_1', paid_at: '2026-09-06T22:49:24.000Z', amount_cents: 4990, currency: 'brl' },
+    ])
+
+    const withoutView = vi.fn(async (statement: string) => {
+      if (statement.includes('monitoring.stripe_payments')) {
+        throw Object.assign(new Error('relation does not exist'), { code: '42P01' })
+      }
+      return []
+    })
+    await expect(readOrderSyncRecords(withoutView)).resolves.toEqual(expect.objectContaining({ stripePayments: [] }))
   })
 })

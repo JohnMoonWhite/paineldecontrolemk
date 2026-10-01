@@ -4,6 +4,7 @@ import type {
   OrderSyncPixPayment,
   OrderSyncProfile,
   OrderSyncRecords,
+  OrderSyncStripePayment,
   OrderSyncStripeSubscription,
 } from './ordersync-types.ts'
 
@@ -38,12 +39,32 @@ const stripeSubscriptionsQuery = `
   from monitoring.stripe_subscriptions
 `
 
+const stripePaymentsQuery = `
+  select subscription_id, paid_at, amount_cents, currency
+  from monitoring.stripe_payments
+`
+
+// The Stripe payments view is created separately in the source; until it exists, or while the
+// reader lacks access to it, the collection carries on without Stripe payments.
+const optionalRelationErrors = new Set(['42P01', '42501'])
+
+async function readOptional(query: SourceQuery, statement: string): Promise<Record<string, unknown>[]> {
+  try {
+    return await query(statement)
+  } catch (error) {
+    const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : ''
+    if (optionalRelationErrors.has(code)) return []
+    throw error
+  }
+}
+
 export async function readOrderSyncRecords(query: SourceQuery): Promise<OrderSyncRecords> {
   const profiles = await query(profilesQuery)
   const organizations = await query(organizationsQuery)
   const organizationMembers = await query(organizationMembersQuery)
   const pixPayments = await query(pixPaymentsQuery)
   const stripeSubscriptions = await query(stripeSubscriptionsQuery)
+  const stripePayments = await readOptional(query, stripePaymentsQuery)
 
   return {
     profiles: profiles.map(toProfile),
@@ -54,6 +75,7 @@ export async function readOrderSyncRecords(query: SourceQuery): Promise<OrderSyn
       .map(toOrganizationMember),
     pixPayments: pixPayments.map(toPixPayment),
     stripeSubscriptions: stripeSubscriptions.map(toStripeSubscription),
+    stripePayments: stripePayments.map(toStripePayment),
   }
 }
 
@@ -111,6 +133,15 @@ function toStripeSubscription(row: Record<string, unknown>): OrderSyncStripeSubs
     subscription_id: requiredString(row.subscription_id, 'stripe_events.subscription_id'),
     status: nullableString(row.status),
     period_end: nullableTimestamp(row.period_end),
+    amount_cents: nullableNumber(row.amount_cents),
+    currency: nullableString(row.currency),
+  }
+}
+
+function toStripePayment(row: Record<string, unknown>): OrderSyncStripePayment {
+  return {
+    subscription_id: requiredString(row.subscription_id, 'stripe_payments.subscription_id'),
+    paid_at: nullableTimestamp(row.paid_at),
     amount_cents: nullableNumber(row.amount_cents),
     currency: nullableString(row.currency),
   }

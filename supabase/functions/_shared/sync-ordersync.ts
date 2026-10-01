@@ -1,4 +1,5 @@
 import { normalizeOrderSync } from './ordersync-adapter.ts'
+import { collectPayments, type SystemPayment } from './ordersync-payments.ts'
 import type { NormalizedSubscriptionFact, OrderSyncRecords } from './ordersync-types.ts'
 
 export type SnapshotFact = {
@@ -24,6 +25,7 @@ type Dependencies = {
   observedAt: string
   readRecords: () => Promise<OrderSyncRecords>
   replaceSnapshot: (facts: SnapshotFact[]) => Promise<number>
+  replacePayments: (payments: SystemPayment[]) => Promise<number>
   recordFailure: (summary: string) => Promise<void>
 }
 
@@ -34,6 +36,7 @@ export async function executeOrderSync(
     const records = await dependencies.readRecords()
     const facts = normalizeOrderSync(records, dependencies.observedAt).map(toSnapshotFact)
     const factsWritten = await dependencies.replaceSnapshot(facts)
+    await dependencies.replacePayments(collectPayments(records))
 
     return { status: 'succeeded', factsWritten }
   } catch (error) {

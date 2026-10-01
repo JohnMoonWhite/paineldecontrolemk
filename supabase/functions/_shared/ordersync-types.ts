@@ -49,12 +49,21 @@ export type OrderSyncStripeSubscription = {
   currency: string | null
 }
 
+/** One paid period of a Stripe subscription (the source's webhook log has no invoices). */
+export type OrderSyncStripePayment = {
+  subscription_id: string
+  paid_at: string | null
+  amount_cents: number | null
+  currency: string | null
+}
+
 export type OrderSyncRecords = {
   profiles: OrderSyncProfile[]
   organizations: OrderSyncOrganization[]
   organizationMembers: OrderSyncOrganizationMember[]
   pixPayments: OrderSyncPixPayment[]
   stripeSubscriptions?: OrderSyncStripeSubscription[]
+  stripePayments?: OrderSyncStripePayment[]
 }
 
 export type NormalizedSubscriptionFact = {

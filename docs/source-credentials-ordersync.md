@@ -48,6 +48,34 @@ grant select (stripe_subscription_id) on public.organizations to <usuario_leitor
 
 A view roda com as permissões de quem a criou, por isso o leitor não precisa de acesso a `stripe_events`.
 
+### Pagamentos Stripe (caixa da empresa)
+
+Cada período ativo de uma assinatura Stripe conta como um pagamento recebido no início do período. Sem esta view a coleta continua funcionando, apenas sem os pagamentos por cartão no caixa:
+
+```sql
+create or replace view monitoring.stripe_payments as
+select distinct on (subscription_id, paid_at) subscription_id, paid_at, amount_cents, currency
+from (
+  select
+    payload->'data'->'object'->>'id' as subscription_id,
+    payload->'data'->'object'->>'status' as status,
+    to_timestamp(coalesce(
+      (payload->'data'->'object'->>'current_period_start')::bigint,
+      (payload->'data'->'object'->'items'->'data'->0->>'current_period_start')::bigint
+    )) as paid_at,
+    (payload->'data'->'object'->'items'->'data'->0->'price'->>'unit_amount')::bigint as amount_cents,
+    payload->'data'->'object'->>'currency' as currency,
+    processed_at
+  from public.stripe_events
+  where type like 'customer.subscription.%'
+) periods
+where status = 'active' and subscription_id is not null and paid_at is not null
+order by subscription_id, paid_at, processed_at desc;
+
+revoke all on monitoring.stripe_payments from public, anon, authenticated;
+grant select on monitoring.stripe_payments to monitoring_ordersync_reader;
+```
+
 Não conceda escrita. Não altere tabelas, dados, políticas RLS, funções, gatilhos nem qualquer comportamento do OrdemSync.
 
 ## Configuração no painel central

@@ -22,12 +22,36 @@ describe('executeOrderSync', () => {
         pixPayments: [],
       }),
       replaceSnapshot,
+      replacePayments: vi.fn().mockResolvedValue(0),
       recordFailure,
     })
 
     expect(result).toEqual({ status: 'succeeded', factsWritten: 1 })
     expect(replaceSnapshot).toHaveBeenCalledOnce()
     expect(recordFailure).not.toHaveBeenCalled()
+  })
+
+  it('writes the received payments after the snapshot', async () => {
+    const replacePayments = vi.fn().mockResolvedValue(1)
+
+    await executeOrderSync({
+      observedAt: '2026-09-29T00:00:00.000Z',
+      readRecords: async () => ({
+        organizations: [],
+        organizationMembers: [],
+        profiles: [],
+        pixPayments: [
+          { user_id: 'u1', org_id: null, status: 'approved', plan: 'monthly', amount_cents: 4990, currency: null, access_ends_at: null, paid_at: '2026-08-01T10:00:00.000Z' },
+        ],
+      }),
+      replaceSnapshot: vi.fn().mockResolvedValue(0),
+      replacePayments,
+      recordFailure: vi.fn(),
+    })
+
+    expect(replacePayments).toHaveBeenCalledWith([
+      expect.objectContaining({ reference: 'pix:u1:2026-08-01T10:00:00.000Z', amount_cents: 4990, method: 'pix' }),
+    ])
   })
 
   it('records failure without attempting a snapshot replacement', async () => {
@@ -40,6 +64,7 @@ describe('executeOrderSync', () => {
         throw new Error('source unavailable')
       },
       replaceSnapshot,
+      replacePayments: vi.fn().mockResolvedValue(0),
       recordFailure,
     })
 
@@ -58,6 +83,7 @@ describe('executeOrderSync', () => {
         throw new Error('ORDERSYNC_SOURCE_AUTH_FAILED: password authentication failed for role reader')
       },
       replaceSnapshot,
+      replacePayments: vi.fn().mockResolvedValue(0),
       recordFailure,
     })
 
@@ -74,6 +100,7 @@ describe('executeOrderSync', () => {
         throw new Error('ORDERSYNC_SOURCE_READ_FAILED:08006:password=do-not-store')
       },
       replaceSnapshot: vi.fn(),
+      replacePayments: vi.fn().mockResolvedValue(0),
       recordFailure,
     })
 
@@ -114,6 +141,7 @@ describe('executeOrderSync', () => {
         throw new Error('ORDERSYNC_SOURCE_CONFIG_FAILED:not_transaction_pooler')
       },
       replaceSnapshot: vi.fn(),
+      replacePayments: vi.fn().mockResolvedValue(0),
       recordFailure,
     })
 
@@ -131,6 +159,7 @@ describe('executeOrderSync', () => {
       replaceSnapshot: async () => {
         throw new Error('MONITORING_CENTRAL_WRITE_FAILED')
       },
+      replacePayments: vi.fn().mockResolvedValue(0),
       recordFailure,
     })
 
