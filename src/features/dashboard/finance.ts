@@ -25,6 +25,12 @@ const payingStatuses = new Set(['active', 'paid'])
 const exclusionKey = (item: { source_id?: string; external_id: string; entity_kind: string }) =>
   `${item.source_id ?? ''}:${item.entity_kind}:${item.external_id}`
 
+/** Facts without the internal accounts (admins, tests), for any total shown on the dashboard. */
+export function withoutExcluded(facts: DashboardFact[], exclusions: FinanceExclusion[]): DashboardFact[] {
+  const excluded = new Set(exclusions.map(exclusionKey))
+  return facts.filter(fact => !excluded.has(exclusionKey(fact)))
+}
+
 /**
  * Monthly revenue of active, non-internal subscriptions. A subscription without a value
  * recorded by the source uses a manually informed value, else the most common value of the

@@ -6,7 +6,7 @@ import { SubscriptionHealth } from './SubscriptionHealth'
 import { SubscriptionTable } from './SubscriptionTable'
 import { summarizeSubscriptionHealth } from './dashboard-query'
 import { sourceHealth } from './dashboard-data'
-import { summarizeFinance } from './finance'
+import { summarizeFinance, withoutExcluded } from './finance'
 import { useDashboard } from './useDashboard'
 
 const sourceLabels = { healthy: 'Em dia', warning: 'Atenção', stale: 'Desatualizado', pending: 'Sem sincronização' }
@@ -21,7 +21,7 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
   const sources = snapshot?.sources ?? []
   const selectedSources = sources.filter(source => sourceId === 'all' || source.id === sourceId)
   const facts = useMemo(() => (snapshot?.facts ?? []).filter(fact => sourceId === 'all' || fact.source_id === sourceId), [snapshot, sourceId])
-  const health = summarizeSubscriptionHealth(facts, now)
+  const health = summarizeSubscriptionHealth(withoutExcluded(facts, snapshot?.exclusions ?? []), now)
   const finance = summarizeFinance(facts, snapshot?.exclusions ?? [], now, snapshot?.manualAmounts ?? [])
   const hasData = facts.length > 0 || selectedSources.some(source => source.last_success_at)
   const needsAttention = selectedSources.some(source => sourceHealth(source, now) !== 'healthy')
