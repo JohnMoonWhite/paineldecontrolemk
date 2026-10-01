@@ -29,4 +29,24 @@ describe('DashboardView', () => {
     const valid = screen.getByText('Assinaturas válidas').closest('article')!
     expect(within(valid).getByText('1')).toBeVisible()
   })
+
+  it('hides internal accounts from the portfolio, project count and subscription table', () => {
+    const now = new Date('2026-09-30T12:00:00Z')
+    const base = { source_id: 's1', plan: 'pro', status: 'active', trial_end_at: null, seat_count: null, provider: 'mercadopago', amount_cents: 4990, currency: null }
+    const snapshot = {
+      sources: [{ id: 's1', code: 'ordersync', name: 'OrdemSync', status: 'active', last_success_at: '2026-09-30T11:59:00Z' }],
+      facts: [
+        { ...base, external_id: 'cliente', entity_kind: 'individual' as const, display_name: 'JGH', period_end_at: '2026-10-30T09:43:13Z' },
+        { ...base, external_id: 'mkhub', entity_kind: 'organization' as const, display_name: 'MKHUB', plan: 'empresas', period_end_at: '2027-07-01T22:23:00Z' },
+      ],
+      exclusions: [{ source_id: 's1', external_id: 'mkhub', entity_kind: 'organization' }],
+    }
+    render(<DashboardView snapshot={snapshot} error={null} refreshing={false} syncing={false} updatedAt={now} now={now} refresh={async () => {}} syncNow={async () => {}} onSignOut={() => {}} />)
+
+    const portfolio = screen.getByRole('heading', { name: 'Sua carteira' }).closest('section')!
+    expect(within(portfolio).getByText('assinaturas identificadas').previousSibling).toHaveTextContent('1')
+    expect(screen.getByText('1 assinaturas na última coleta')).toBeVisible()
+    expect(screen.queryByRole('cell', { name: /MKHUB/ })).not.toBeInTheDocument()
+    expect(within(portfolio).getByText(/Contas internas fora dos números: MKHUB/)).toBeVisible()
+  })
 })

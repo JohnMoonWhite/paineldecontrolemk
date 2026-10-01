@@ -20,10 +20,13 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
   const [sourceId, setSourceId] = useState('all')
   const sources = snapshot?.sources ?? []
   const selectedSources = sources.filter(source => sourceId === 'all' || source.id === sourceId)
-  const facts = useMemo(() => (snapshot?.facts ?? []).filter(fact => sourceId === 'all' || fact.source_id === sourceId), [snapshot, sourceId])
-  const health = summarizeSubscriptionHealth(withoutExcluded(facts, snapshot?.exclusions ?? []), now)
-  const finance = summarizeFinance(facts, snapshot?.exclusions ?? [], now, snapshot?.manualAmounts ?? [])
-  const hasData = facts.length > 0 || selectedSources.some(source => source.last_success_at)
+  const sourceFacts = useMemo(() => (snapshot?.facts ?? []).filter(fact => sourceId === 'all' || fact.source_id === sourceId), [snapshot, sourceId])
+  // Internal accounts (admins, demos, tests) stay out of every number and list on the dashboard.
+  const customerFacts = useMemo(() => withoutExcluded(snapshot?.facts ?? [], snapshot?.exclusions ?? []), [snapshot])
+  const facts = useMemo(() => withoutExcluded(sourceFacts, snapshot?.exclusions ?? []), [sourceFacts, snapshot])
+  const health = summarizeSubscriptionHealth(facts, now)
+  const finance = summarizeFinance(sourceFacts, snapshot?.exclusions ?? [], now, snapshot?.manualAmounts ?? [])
+  const hasData = sourceFacts.length > 0 || selectedSources.some(source => source.last_success_at)
   const needsAttention = selectedSources.some(source => sourceHealth(source, now) !== 'healthy')
 
   return <div className="dashboard-layout">
@@ -52,14 +55,14 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
             <div className="section-heading"><div><h2 id="projects-title">Projetos monitorados</h2><p>A saúde de cada conexão</p></div><span className="count-label">{selectedSources.length} {selectedSources.length === 1 ? 'projeto' : 'projetos'}</span></div>
             <div className="source-list">{selectedSources.map(source => {
               const state = sourceHealth(source, now)
-              const count = (snapshot?.facts ?? []).filter(fact => fact.source_id === source.id).length
+              const count = customerFacts.filter(fact => fact.source_id === source.id).length
               return <article key={source.id} className="source-row"><div className="source-avatar">{source.name.slice(0, 2)}</div><div className="source-info"><strong>{source.name}</strong><span>{source.last_success_at ? `${count} assinaturas na última coleta` : 'Coleta ainda não concluída'}</span><small>{source.last_success_at ? `Última coleta: ${new Date(source.last_success_at).toLocaleString('pt-BR')}` : 'Nenhuma coleta bem-sucedida'}</small></div><span className={`status-badge status-badge--${state}`}>{sourceLabels[state]}</span></article>
             })}</div>
             {snapshot && selectedSources.length === 0 ? <div className="empty-state"><Icon name="projects" /><h3>Nenhum projeto conectado</h3><p>As conexões configuradas aparecerão aqui após a primeira consulta.</p></div> : null}
             {!snapshot ? <div className="empty-state"><p>{error ? 'Os projetos estão indisponíveis nesta consulta.' : 'Consultando os projetos…'}</p></div> : null}
             <div className="panel-footnote"><Icon name="shield" /><span>As origens são consultadas somente para leitura.</span></div>
           </section>
-          <section className="panel portfolio-panel" aria-labelledby="portfolio-title"><div className="section-heading"><div><h2 id="portfolio-title">Sua carteira</h2><p>Composição das assinaturas</p></div></div><div className="portfolio-total"><strong>{hasData ? facts.length.toLocaleString('pt-BR') : '—'}</strong><span>assinaturas identificadas</span></div><div className="portfolio-bar" aria-hidden="true">{facts.length ? <><span style={{ width: `${health.individuals / facts.length * 100}%` }} /><span style={{ width: `${health.organizations / facts.length * 100}%` }} /></> : null}</div><dl className="portfolio-breakdown"><div><dt><i />Individuais</dt><dd>{hasData ? health.individuals : '—'}</dd></div><div><dt><i />Empresariais</dt><dd>{hasData ? health.organizations : '—'}</dd></div></dl><p className="portfolio-note">Cada assinatura empresarial conta uma vez, independentemente da quantidade de membros.</p></section>
+          <section className="panel portfolio-panel" aria-labelledby="portfolio-title"><div className="section-heading"><div><h2 id="portfolio-title">Sua carteira</h2><p>Composição das assinaturas</p></div></div><div className="portfolio-total"><strong>{hasData ? facts.length.toLocaleString('pt-BR') : '—'}</strong><span>assinaturas identificadas</span></div><div className="portfolio-bar" aria-hidden="true">{facts.length ? <><span style={{ width: `${health.individuals / facts.length * 100}%` }} /><span style={{ width: `${health.organizations / facts.length * 100}%` }} /></> : null}</div><dl className="portfolio-breakdown"><div><dt><i />Individuais</dt><dd>{hasData ? health.individuals : '—'}</dd></div><div><dt><i />Empresariais</dt><dd>{hasData ? health.organizations : '—'}</dd></div></dl><p className="portfolio-note">Cada assinatura empresarial conta uma vez, independentemente da quantidade de membros.{finance.excludedNames.length ? ` Contas internas fora dos números: ${finance.excludedNames.join(', ')}.` : ''}</p></section>
         </div>
         <FinancePanel summary={finance} available={hasData} />
         <SubscriptionTable key={sourceId} facts={facts} sources={sources} now={now} />
