@@ -25,18 +25,15 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 a { color: inherit; }
 button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 5px; }
 h1, h2, h3, p { margin-top: 0; }
-h1, h2, .brand-name, .portfolio-total strong, .health-metric strong { font-family: var(--display); }
+h1, h2, .portfolio-total strong, .health-metric strong { font-family: var(--display); }
 h1 { font-size: clamp(2.3rem, 4vw, 3.6rem); line-height: 1.1; letter-spacing: -.05em; font-weight: 600; margin-bottom: 18px; }
 h2 { font-size: 1.35rem; line-height: 1.3; font-weight: 600; letter-spacing: -.025em; margin-bottom: 5px; }
 .icon { flex: 0 0 auto; vertical-align: middle; }
-.brand { display: flex; align-items: center; gap: 12px; width: fit-content; }
-.brand-symbol { width: 64px; height: 31px; background: url('/brand/mkhub.png') 52% 24% / 250% auto no-repeat; }
-.brand-name { font-size: 1.8rem; font-weight: 700; letter-spacing: -.06em; line-height: 1; white-space: nowrap; }
-.brand-name > span { font-weight: 300; }
-.brand-name > i { color: var(--cyan); font-style: normal; }
-.brand-name small { display: block; margin-top: 7px; font-family: 'Manrope Variable', sans-serif; font-size: .7rem; font-weight: 450; letter-spacing: 0; color: var(--muted); }
-.brand--compact .brand-symbol { width: 48px; height: 24px; }
-.brand--compact .brand-name { font-size: 1.65rem; }
+/* The header shows the original MKHub logo: symbol and wordmark taken from the brand file. */
+.brand { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; width: fit-content; }
+.brand-lockup { display: block; height: 38px; width: auto; }
+.brand--compact .brand-lockup { height: 32px; }
+.brand-caption { color: var(--muted); font-size: .7rem; letter-spacing: .02em; }
 
 /* The original mark is the visual centerpiece; the rest stays quiet. */
 .access-shell { min-height: 100svh; max-width: 1600px; margin: auto; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); padding: 32px; gap: 40px; align-items: center; }
@@ -335,6 +332,8 @@ td strong { font-weight: 650; color: #f2f5fa; }
   .auth-content { max-width: none; padding: 34px; }
 }
 @media (max-width: 520px) {
+  .brand--compact .brand-lockup { height: 26px; }
+  .brand-caption { font-size: .66rem; }
   .update-banner { flex-wrap: wrap; gap: 10px 12px; }
   .update-banner p { flex-basis: calc(100% - 34px); }
   .update-banner .primary-button { flex: 1; }

@@ -44,8 +44,8 @@ describe('DashboardView', () => {
     render(<DashboardView snapshot={snapshot} error={null} refreshing={false} syncing={false} updatedAt={now} now={now} refresh={async () => {}} syncNow={async () => {}} onSignOut={() => {}} />)
 
     const portfolio = screen.getByRole('heading', { name: 'Sua carteira' }).closest('section')!
-    expect(within(portfolio).getByText('assinaturas identificadas').previousSibling).toHaveTextContent('1')
-    expect(screen.getByText('1 assinaturas na última coleta')).toBeVisible()
+    expect(within(portfolio).getByText('cadastro identificado').previousSibling).toHaveTextContent('1')
+    expect(screen.getByText('1 cadastro na última coleta')).toBeVisible()
     expect(screen.queryByRole('cell', { name: /MKHUB/ })).not.toBeInTheDocument()
     expect(within(portfolio).getByText(/Contas internas fora dos números: MKHUB/)).toBeVisible()
   })

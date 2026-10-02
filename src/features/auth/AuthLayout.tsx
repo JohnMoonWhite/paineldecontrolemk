@@ -13,6 +13,6 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       </div>
       <div className="brand-panel-footer"><span>Softwares e sistemas inteligentes</span><span>Painel privado</span></div>
     </aside>
-    <div className="auth-content"><div className="mobile-brand"><Brand /></div>{children}<p className="security-note"><Icon name="shield" />Acesso protegido por autenticação em duas etapas</p></div>
+    <div className="auth-content"><div className="mobile-brand"><Brand /></div>{children}<p className="security-note"><Icon name="shield" />Acesso restrito à equipe MKHub</p></div>
   </main>
 }

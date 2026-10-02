@@ -8,7 +8,7 @@ export default defineConfig({
     VitePWA({
       // The app shows an "update available" prompt instead of switching versions silently.
       registerType: 'prompt',
-      includeAssets: ['favicon.svg', 'brand/mkhub.png'],
+      includeAssets: ['icons/favicon-32.png', 'icons/favicon-48.png', 'icons/apple-touch-icon.png', 'brand/mkhub.png', 'brand/mkhub-lockup.png'],
       manifest: {
         name: 'MKHUB | Painel de controle',
         short_name: 'MKHUB',
@@ -20,7 +20,11 @@ export default defineConfig({
         display: 'standalone',
         theme_color: '#08090d',
         background_color: '#08090d',
-        icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],
+        icons: [
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
       },
     }),
   ],
