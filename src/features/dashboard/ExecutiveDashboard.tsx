@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Brand } from '../../components/Brand'
 import { NotificationToggle, PushInvite } from '../app/NotificationToggle'
 import { usePushNotifications, type PushNotifications } from '../app/usePushNotifications'
 import { Icon } from '../../components/Icon'
 import { CompanyCashPanel, type NewLedgerEntry } from './CompanyCashPanel'
 import { FinancePanel } from './FinancePanel'
+import { IntegrityPage, IntegritySummary } from '../integrity/IntegrityViews'
 import { MonthlyReport } from './MonthlyReport'
 import { TeamPanel } from './TeamPanel'
 import { SubscriptionHealth } from './SubscriptionHealth'
@@ -43,6 +44,15 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
 }) {
   const [cashMonth, setCashMonth] = useState(() => toBusinessDate(new Date()).slice(0, 7))
   const [reportOpen, setReportOpen] = useState(false)
+  // "#integridade" opens the detailed integrity view; any other anchor returns to the overview.
+  const [hash, setHash] = useState(() => window.location.hash)
+  useEffect(() => {
+    const onHashChange = () => setHash(window.location.hash)
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+  const showIntegrity = hash === '#integridade'
+  const sites = snapshot?.sites ?? []
   const team = snapshot?.team ?? []
   const me = team.find(member => member.is_me)
   const canEdit = !me || me.role !== 'viewer'
@@ -72,7 +82,8 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
     <header className="masthead">
       <Brand compact />
       <nav aria-label="Navegação principal">
-        <a className="nav-link nav-link--primary" href="#overview"><Icon name="overview" />Visão geral</a>
+        <a className={`nav-link${showIntegrity ? '' : ' nav-link--primary'}`} href="#overview"><Icon name="overview" />Visão geral</a>
+        <a className={`nav-link${showIntegrity ? ' nav-link--primary' : ''}`} href="#integridade"><Icon name="pulse" />Integridade</a>
         <a className="nav-link" href="#projects"><Icon name="projects" />Projetos<span>{sources.length || '—'}</span></a>
         <a className="nav-link" href="#cash"><Icon name="finance" />Caixa</a>
         <a className="nav-link" href="#finance"><Icon name="subscriptions" />Receita</a>
@@ -83,12 +94,14 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
     </header>
     <main className="dashboard-main">
       <div className="dashboard-content">
+        {showIntegrity ? <IntegrityPage sites={sites} now={now} /> : <>
         <section id="overview" className="overview-section">
           <div className="dashboard-header"><div className="executive-heading"><p className="date-label">{now.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p><h1>Resumo executivo</h1><p className="dashboard-lead">Seus projetos. A visão completa.</p><span className="read-only"><Icon name="shield" />Consulta às origens somente para leitura</span></div><div className="executive-brand"><img src="/brand/mkhub.png" alt="MKHUB — Controle, gestão e resultados" width="1536" height="1024" /></div></div>
           <div className="overview-toolbar"><label className="source-filter">Projeto<select value={sourceId} onChange={event => setSourceId(event.target.value)}><option value="all">Todos os projetos</option>{sources.map(source => <option key={source.id} value={source.id}>{source.name}</option>)}</select></label><div className="refresh-controls"><p className="update-status" aria-live="polite">{updatedAt ? `Painel consultado às ${updatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Aguardando consulta'}<span>Atualização a cada 5 minutos</span></p><button className="secondary-button refresh-button" disabled={refreshing || syncing} onClick={() => void syncNow()} type="button"><Icon name="refresh" className={refreshing || syncing ? 'spinning' : ''} />{syncing ? 'Coletando dados…' : refreshing ? 'Atualizando…' : 'Atualizar agora'}</button></div></div>
           {push ? <PushInvite push={push} /> : null}
           {error ? <div className="notice notice--error" role="alert"><Icon name="alert" /><div><strong>Não foi possível atualizar</strong><p>{error}</p>{snapshot ? <p>Os dados abaixo são da última consulta bem-sucedida.</p> : null}</div></div> : null}
           {snapshot && needsAttention ? <div className="notice"><Icon name="alert" /><div><strong>{hasData ? 'Alguns projetos precisam de atenção' : 'Aguardando a primeira coleta de dados'}</strong><p>{hasData ? 'Confira a última sincronização de cada projeto antes de tomar uma decisão.' : 'A conexão foi cadastrada, mas ainda não há uma sincronização bem-sucedida. Os indicadores ficarão disponíveis após a coleta.'}</p></div><a href="#projects" aria-label="Ver estado dos projetos"><Icon name="arrow" /></a></div> : null}
+          <IntegritySummary sites={sites} now={now} />
           <SubscriptionHealth health={health} available={hasData} loading={!snapshot && !error} />
         </section>
         <div className="business-grid">
@@ -115,6 +128,7 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
         {reportOpen ? <MonthlyReport month={cashMonth} cash={cash} revenue={summarizeFinance(withoutExcluded(snapshot?.facts ?? [], snapshot?.exclusions ?? []), [], now, snapshot?.manualAmounts ?? [])}
           describe={item => item.entry ? item.entry.description : `Assinatura ${customerNames.get(`${item.payment?.source_id}:${item.payment?.entity_kind}:${item.payment?.external_id}`) ?? 'sem nome'}`}
           onClose={() => setReportOpen(false)} generatedAt={new Date()} /> : null}
+        </>}
         <footer className="dashboard-footer"><span>MKHUB. Clareza para decidir.</span><span>Horários exibidos no seu fuso local</span></footer>
       </div>
     </main>
