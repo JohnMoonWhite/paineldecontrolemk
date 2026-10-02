@@ -5,13 +5,15 @@ import { usePushNotifications, type PushNotifications } from '../app/usePushNoti
 import { Icon } from '../../components/Icon'
 import { CompanyCashPanel, type NewLedgerEntry } from './CompanyCashPanel'
 import { FinancePanel } from './FinancePanel'
+import { MonthlyReport } from './MonthlyReport'
+import { TeamPanel } from './TeamPanel'
 import { SubscriptionHealth } from './SubscriptionHealth'
 import { SubscriptionTable } from './SubscriptionTable'
 import { summarizeSubscriptionHealth } from './dashboard-query'
 import { sourceHealth } from './dashboard-data'
 import { summarizeFinance, withoutExcluded } from './finance'
 import { summarizeLedger, toBusinessDate } from './ledger'
-import { addLedgerEntry, removeLedgerEntry } from './ledger-data'
+import { addLedgerEntry, removeLedgerEntry, setMemberRole } from './ledger-data'
 import { getSupabaseClient } from '../../lib/supabase'
 import { useDashboard } from './useDashboard'
 
@@ -28,16 +30,22 @@ export function ExecutiveDashboard({ onSignOut }: { onSignOut: () => void }) {
   }
   return <DashboardView {...data} onSignOut={onSignOut} push={push}
     onAddEntry={entry => withClient(client => addLedgerEntry(client, entry))}
-    onRemoveEntry={entryId => withClient(client => removeLedgerEntry(client, entryId))} />
+    onRemoveEntry={entryId => withClient(client => removeLedgerEntry(client, entryId))}
+    onRoleChange={(userId, role) => withClient(client => setMemberRole(client, userId, role))} />
 }
 
-export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt, now, syncNow, onSignOut, onAddEntry = async () => {}, onRemoveEntry = async () => {}, push }: ReturnType<typeof useDashboard> & {
+export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt, now, syncNow, onSignOut, onAddEntry = async () => {}, onRemoveEntry = async () => {}, onRoleChange = async () => {}, push }: ReturnType<typeof useDashboard> & {
   onSignOut: () => void
   push?: PushNotifications
   onAddEntry?: (entry: NewLedgerEntry) => Promise<void>
   onRemoveEntry?: (entryId: string) => Promise<void>
+  onRoleChange?: (userId: string, role: string) => Promise<void>
 }) {
   const [cashMonth, setCashMonth] = useState(() => toBusinessDate(new Date()).slice(0, 7))
+  const [reportOpen, setReportOpen] = useState(false)
+  const team = snapshot?.team ?? []
+  const me = team.find(member => member.is_me)
+  const canEdit = !me || me.role !== 'viewer'
   const [sourceId, setSourceId] = useState('all')
   const sources = snapshot?.sources ?? []
   const selectedSources = sources.filter(source => sourceId === 'all' || source.id === sourceId)
@@ -100,9 +108,13 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
         {snapshot ? <CompanyCashPanel summary={cash} month={cashMonth} onMonthChange={setCashMonth}
           customerName={item => customerNames.get(`${item.payment?.source_id}:${item.payment?.entity_kind}:${item.payment?.external_id}`) ?? 'sem nome'}
           sourceName={item => sources.find(source => source.id === item.payment?.source_id)?.name ?? 'Sistema'}
-          onAdd={onAddEntry} onRemove={onRemoveEntry} /> : null}
+          onAdd={onAddEntry} onRemove={onRemoveEntry} onReport={() => setReportOpen(true)} canEdit={canEdit} /> : null}
         <FinancePanel summary={finance} available={hasData} />
         <SubscriptionTable key={sourceId} facts={facts} sources={sources} now={now} />
+        {team.length ? <TeamPanel team={team} onRoleChange={onRoleChange} /> : null}
+        {reportOpen ? <MonthlyReport month={cashMonth} cash={cash} revenue={summarizeFinance(withoutExcluded(snapshot?.facts ?? [], snapshot?.exclusions ?? []), [], now, snapshot?.manualAmounts ?? [])}
+          describe={item => item.entry ? item.entry.description : `Assinatura ${customerNames.get(`${item.payment?.source_id}:${item.payment?.entity_kind}:${item.payment?.external_id}`) ?? 'sem nome'}`}
+          onClose={() => setReportOpen(false)} generatedAt={new Date()} /> : null}
         <footer className="dashboard-footer"><span>MKHUB. Clareza para decidir.</span><span>Horários exibidos no seu fuso local</span></footer>
       </div>
     </main>

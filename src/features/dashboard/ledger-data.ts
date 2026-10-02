@@ -12,3 +12,8 @@ export async function removeLedgerEntry(client: SupabaseClient, entryId: string)
   const { error } = await client.from('monitoring_ledger_entries').update({ deleted_at: now, updated_at: now }).eq('id', entryId)
   if (error) throw new Error('Não foi possível excluir o lançamento. Tente novamente.')
 }
+
+export async function setMemberRole(client: SupabaseClient, userId: string, role: string): Promise<void> {
+  const { error } = await client.rpc('set_monitoring_role', { p_user_id: userId, p_role: role })
+  if (error) throw new Error(error.message.includes('at least one owner') ? 'A equipe precisa de pelo menos um dono.' : 'Não foi possível alterar o acesso.')
+}

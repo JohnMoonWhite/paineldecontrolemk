@@ -1,17 +1,16 @@
 import { useState, type FormEvent } from 'react'
+import { downloadCsv, toCsv } from '../../lib/csv'
+import { formatDay, money, monthLabel, plainAmount } from '../../lib/format'
 import { parseAmountCents, type LedgerEntry, type LedgerMovement, type LedgerSummary } from './ledger'
 import { paymentMethodLabel } from './relationship'
 
-export type NewLedgerEntry = Omit<LedgerEntry, 'id'>
-
-const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-const money = (cents: number) => currency.format(cents / 100).replace(/\s/g, ' ')
+export type NewLedgerEntry = Omit<LedgerEntry, 'id' | 'author_name'>
 
 const ledgerCategories = ['Saldo inicial', 'Serviços', 'Contratos', 'Infraestrutura', 'Ferramentas', 'Impostos', 'Pessoal', 'Marketing', 'Outros']
 const paymentMethods = [['pix', 'PIX'], ['credit_card', 'Cartão de crédito'], ['debit_card', 'Cartão de débito'], ['boleto', 'Boleto'], ['bank_transfer', 'Transferência'], ['cash', 'Dinheiro'], ['mercadopago', 'Mercado Pago'], ['stripe', 'Cartão (Stripe)'], ['other', 'Outro']] as const
 const methodLabels: Record<string, string> = Object.fromEntries(paymentMethods)
 
-export function CompanyCashPanel({ summary, month, onMonthChange, customerName, sourceName, onAdd, onRemove }: {
+export function CompanyCashPanel({ summary, month, onMonthChange, customerName, sourceName, onAdd, onRemove, onReport, canEdit = true }: {
   summary: LedgerSummary
   month: string
   onMonthChange: (month: string) => void
@@ -19,6 +18,9 @@ export function CompanyCashPanel({ summary, month, onMonthChange, customerName, 
   sourceName: (movement: LedgerMovement) => string
   onAdd: (entry: NewLedgerEntry) => Promise<void>
   onRemove: (entryId: string) => Promise<void>
+  onReport: () => void
+  /** Read-only members see the cash panel without the entry form or delete buttons. */
+  canEdit?: boolean
 }) {
   const [kind, setKind] = useState<'income' | 'expense'>('income')
   const [description, setDescription] = useState('')
@@ -48,6 +50,18 @@ export function CompanyCashPanel({ summary, month, onMonthChange, customerName, 
   }
 
   const { month: current, totals } = summary
+  const describeMovement = (item: LedgerMovement) => item.entry ? item.entry.description : `Assinatura ${customerName(item)}`
+  const originOf = (item: LedgerMovement) => item.entry
+    ? `Manual · ${methodLabels[item.entry.payment_method ?? ''] ?? 'Não informado'}`
+    : `${sourceName(item)} · ${paymentMethodLabel(item.payment?.method)}`
+
+  function exportCsv() {
+    const rows = summary.movements.map(item => [
+      formatDay(item.date), item.kind === 'income' ? 'Entrada' : 'Saída', describeMovement(item), item.entry?.category ?? '',
+      originOf(item), item.entry?.author_name ?? (item.entry ? '' : 'Automático'), plainAmount(item.kind === 'expense' ? -item.amount_cents : item.amount_cents),
+    ])
+    downloadCsv(`caixa-${month}.csv`, toCsv(['Data', 'Tipo', 'Descrição', 'Categoria', 'Origem', 'Lançado por', 'Valor'], rows))
+  }
   const flowTotal = current.incomeCents + current.expenseCents
   const incomeShare = flowTotal ? Math.round(current.incomeCents / flowTotal * 100) : 0
   return <section className="panel cash-panel" id="cash" aria-labelledby="cash-title">
@@ -55,7 +69,9 @@ export function CompanyCashPanel({ summary, month, onMonthChange, customerName, 
       <div><h2 id="cash-title">Caixa da empresa</h2><p>Lançamentos manuais e pagamentos recebidos pelos sistemas</p></div>
       <div className="cash-actions">
         <label className="month-picker"><span>Mês</span><input type="month" value={month} onChange={event => event.target.value && onMonthChange(event.target.value)} /></label>
-        <button className="primary-button" type="button" aria-expanded={formOpen} aria-controls="cash-form" onClick={() => setFormOpen(open => !open)}>{formOpen ? 'Fechar' : '+ Novo lançamento'}</button>
+        <button className="secondary-button" type="button" onClick={onReport}>Relatório do mês</button>
+        <button className="secondary-button" type="button" onClick={exportCsv} disabled={!summary.movements.length}>Exportar CSV</button>
+        {canEdit ? <button className="primary-button" type="button" aria-expanded={formOpen} aria-controls="cash-form" onClick={() => setFormOpen(open => !open)}>{formOpen ? 'Fechar' : '+ Novo lançamento'}</button> : null}
       </div>
     </div>
     <div className="cash-overview">
@@ -77,7 +93,7 @@ export function CompanyCashPanel({ summary, month, onMonthChange, customerName, 
         <div className="cash-flow" aria-hidden="true">{flowTotal ? <><span style={{ width: `${incomeShare}%` }} /><span style={{ width: `${100 - incomeShare}%` }} /></> : null}</div>
       </div>
     </div>
-    {formOpen ? <form className="cash-form" id="cash-form" onSubmit={event => void submit(event)} aria-label="Novo lançamento">
+    {canEdit && formOpen ? <form className="cash-form" id="cash-form" onSubmit={event => void submit(event)} aria-label="Novo lançamento">
       <fieldset className="kind-toggle"><legend>Tipo</legend>
         <label><input type="radio" name="kind" checked={kind === 'income'} onChange={() => setKind('income')} />Entrada</label>
         <label><input type="radio" name="kind" checked={kind === 'expense'} onChange={() => setKind('expense')} />Saída</label>
@@ -95,11 +111,11 @@ export function CompanyCashPanel({ summary, month, onMonthChange, customerName, 
       return <li key={item.key} className={`cash-item cash-item--${item.kind}`}>
         <time className="cash-date" dateTime={item.date}><b>{day}</b>{shortMonths[Number(monthPart) - 1]}</time>
         <div className="cash-item__body">
-          {item.entry ? <><strong>{item.entry.description}</strong><span>{[item.entry.category, `Manual · ${methodLabels[item.entry.payment_method ?? ''] ?? 'Não informado'}`].filter(Boolean).join(' · ')}</span></>
+          {item.entry ? <><strong>{item.entry.description}</strong><span>{[item.entry.category, originOf(item), item.entry.author_name ? `por ${item.entry.author_name}` : null].filter(Boolean).join(' · ')}</span></>
             : <><strong>Assinatura {customerName(item)}</strong><span>{sourceName(item)} · {paymentMethodLabel(item.payment?.method)} · automático</span></>}
         </div>
         <span className="cash-amount">{item.kind === 'expense' ? '−' : '+'} {money(item.amount_cents)}</span>
-        {item.entry ? <button className="cash-remove" type="button" aria-label={`Excluir ${item.entry.description}`} title="Excluir lançamento" onClick={() => { if (window.confirm(`Excluir o lançamento "${item.entry!.description}"?`)) void onRemove(item.entry!.id) }}>×</button> : <span className="cash-remove" aria-hidden="true" />}
+        {item.entry && canEdit ? <button className="cash-remove" type="button" aria-label={`Excluir ${item.entry.description}`} title="Excluir lançamento" onClick={() => { if (window.confirm(`Excluir o lançamento "${item.entry!.description}"?`)) void onRemove(item.entry!.id) }}>×</button> : <span className="cash-remove" aria-hidden="true" />}
       </li>
     })}</ol> : <div className="empty-state"><p>Nenhuma movimentação em {monthLabel(month)}.</p></div>}
     <p className="table-note">O saldo atual soma tudo o que entrou menos tudo o que saiu até hoje. Para ele bater com a conta bancária, lance um "Saldo inicial" com o valor em caixa antes do primeiro lançamento.</p>
@@ -107,10 +123,6 @@ export function CompanyCashPanel({ summary, month, onMonthChange, customerName, 
 }
 
 const shortMonths = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
-
-function monthLabel(month: string) {
-  return new Date(`${month}-15T12:00:00Z`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-}
 
 function CashMetric({ label, value, note, tone }: { label: string; value: string; note: string; tone: 'income' | 'expense' | 'neutral' }) {
   return <article className={`cash-metric cash-metric--${tone}`}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>

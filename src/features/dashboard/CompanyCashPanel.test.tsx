@@ -8,7 +8,7 @@ const summary: LedgerSummary = {
   month: { manualIncomeCents: 50000, systemIncomeCents: 4990, incomeCents: 54990, expenseCents: 15000, resultCents: 39990 },
   totals: { incomeCents: 159980, expenseCents: 17000, balanceCents: 142980 },
   movements: [
-    { key: 'manual:e3', origin: 'manual', kind: 'income', date: '2026-09-20', amount_cents: 50000, entry: { id: 'e3', kind: 'income', amount_cents: 50000, entry_date: '2026-09-20', description: 'Projeto fazenda', category: 'Serviços', payment_method: 'pix' } },
+    { key: 'manual:e3', origin: 'manual', kind: 'income', date: '2026-09-20', amount_cents: 50000, entry: { id: 'e3', kind: 'income', amount_cents: 50000, entry_date: '2026-09-20', description: 'Projeto fazenda', category: 'Serviços', payment_method: 'pix', author_name: 'Clebson' } },
     { key: 'system:p2', origin: 'system', kind: 'income', date: '2026-09-05', amount_cents: 4990, payment: { source_id: 's1', reference: 'p2', external_id: 'c2', entity_kind: 'individual', method: 'pix', paid_at: '2026-09-05T15:00:00Z', amount_cents: 4990 } },
   ],
 }
@@ -16,7 +16,7 @@ const summary: LedgerSummary = {
 function renderPanel(overrides: Partial<Parameters<typeof CompanyCashPanel>[0]> = {}) {
   const props = {
     summary, month: '2026-09', onMonthChange: vi.fn(), customerName: () => 'JGH', sourceName: () => 'OrdemSync',
-    onAdd: vi.fn().mockResolvedValue(undefined), onRemove: vi.fn().mockResolvedValue(undefined), ...overrides,
+    onAdd: vi.fn().mockResolvedValue(undefined), onRemove: vi.fn().mockResolvedValue(undefined), onReport: vi.fn(), canEdit: true, ...overrides,
   }
   render(<CompanyCashPanel {...props} />)
   return props
@@ -66,5 +66,28 @@ describe('parseAmountCents', () => {
     expect(parseAmountCents('12.50')).toBe(1250)
     expect(parseAmountCents('abc')).toBeNull()
     expect(parseAmountCents('0')).toBeNull()
+  })
+})
+
+describe('CompanyCashPanel access and outputs', () => {
+  it('shows who recorded each manual entry', () => {
+    renderPanel()
+
+    expect(screen.getByText(/por Clebson/)).toBeVisible()
+  })
+
+  it('keeps read-only members from recording or removing entries', () => {
+    renderPanel({ canEdit: false })
+
+    expect(screen.queryByRole('button', { name: '+ Novo lançamento' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Excluir/ })).not.toBeInTheDocument()
+  })
+
+  it('opens the monthly report and offers a CSV export', () => {
+    const { onReport } = renderPanel()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Relatório do mês' }))
+    expect(onReport).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'Exportar CSV' })).toBeVisible()
   })
 })

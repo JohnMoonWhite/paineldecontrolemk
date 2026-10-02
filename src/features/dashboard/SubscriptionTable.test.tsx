@@ -26,7 +26,7 @@ describe('SubscriptionTable', () => {
     expect(within(former).getByText('Cartão (Stripe)')).toBeVisible()
     expect(within(former).getByText(/expirou há 29 dias/)).toBeVisible()
 
-    expect(within(screen.getByText('Teste Acabou').closest('tr')!).getByText('Teste expirado')).toBeVisible()
+    expect(within(screen.getByText('Teste Acabou').closest('tr')!).getByText('Plano grátis')).toBeVisible()
   })
 
   it('filters by relationship and by payment method', () => {

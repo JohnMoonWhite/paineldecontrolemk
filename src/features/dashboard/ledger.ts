@@ -9,6 +9,8 @@ export type LedgerEntry = {
   description: string
   category: string | null
   payment_method: string | null
+  /** Stamped by the database with the name of whoever recorded the entry. */
+  author_name?: string | null
 }
 
 /** A payment received by a monitored system. */

@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Icon } from '../../components/Icon'
+import { downloadCsv, toCsv } from '../../lib/csv'
 import { effectiveExpiry, factState, type DashboardFact } from './dashboard-query'
 import type { Source } from './dashboard-data'
 import { paymentMethodLabel, relationship, relationshipLabels, type Relationship } from './relationship'
 
 const relationshipBadges: Record<Relationship, string> = {
   subscriber: 'valid', cancelling: 'expiring', overdue: 'expired', trial: 'no-expiry',
-  'trial-expired': 'neutral', former: 'expired', inactive: 'neutral',
+  'trial-expired': 'neutral', free: 'neutral', former: 'expired', inactive: 'neutral',
 }
 
 const paymentFilters = [['pix', 'PIX'], ['stripe', 'Cartão (Stripe)'], ['mercadopago', 'Mercado Pago'], ['none', 'Não informado']] as const
@@ -58,9 +59,18 @@ export function SubscriptionTable({ facts, sources, now }: { facts: DashboardFac
   const currentPage = Math.min(page, pages - 1)
   const visible = filtered.slice(currentPage * pageSize, (currentPage + 1) * pageSize)
   const clearFilters = () => { setSearch(''); setFilter('all'); setPayment('all'); setPage(0) }
+  const exportCsv = () => downloadCsv('assinaturas.csv', toCsv(
+    ['Cliente', 'Tipo', 'Projeto', 'Plano', 'Situação', 'Vencimento', 'Forma de pagamento', 'Pagamentos', 'Cliente desde'],
+    filtered.map(fact => [
+      fact.display_name || fact.external_id, fact.entity_kind === 'organization' ? 'Empresarial' : 'Individual',
+      sources.find(source => source.id === fact.source_id)?.name ?? '', fact.plan ?? '', relationshipLabels[relationship(fact, now)],
+      effectiveExpiry(fact) ? formatDate(effectiveExpiry(fact)) : '', paymentMethodLabel(fact.payment_method), String(fact.payments_count ?? 0),
+      fact.first_paid_at ? new Date(fact.first_paid_at).toLocaleDateString('pt-BR') : '',
+    ]),
+  ))
 
   return <section className="panel subscriptions-panel" id="subscriptions" aria-labelledby="subscriptions-title">
-    <div className="section-heading"><div><h2 id="subscriptions-title">Assinaturas em detalhe</h2><p>Situação de cada cliente, validade e forma de pagamento</p></div><span className="count-label">{filtered.length} registros</span></div>
+    <div className="section-heading"><div><h2 id="subscriptions-title">Assinaturas em detalhe</h2><p>Situação de cada cliente, validade e forma de pagamento</p></div><div className="heading-actions"><span className="count-label">{filtered.length} registros</span><button className="secondary-button" type="button" onClick={exportCsv} disabled={!filtered.length}>Exportar CSV</button></div></div>
     <div className="table-toolbar">
       <label className="search-field"><Icon name="search" /><input type="search" aria-label="Buscar assinatura" placeholder="Buscar por nome, identificador ou plano" value={search} onChange={event => { setSearch(event.target.value); setPage(0) }} /></label>
       <label className="status-filter"><span>Situação</span><select value={filter} onChange={event => { setFilter(event.target.value); setPage(0) }}><option value="all">Todas as situações</option><option value="expiring">Vence em breve (7 dias)</option>{(Object.entries(relationshipLabels) as [Relationship, string][]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>

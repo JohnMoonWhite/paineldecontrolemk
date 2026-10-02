@@ -35,7 +35,19 @@ export function effectiveExpiry(fact: DashboardFact): string | null {
   return fact.status.toLowerCase() === 'trialing' ? fact.trial_end_at ?? fact.period_end_at : fact.period_end_at
 }
 
+const freePlans = new Set(['gratuito', 'gratis', 'grátis', 'free'])
+const payingStatuses = new Set(['active', 'paid'])
+
+/**
+ * Free-plan records never paid and have no due date that matters: OrdemSync ends its trial
+ * after a number of service orders and keeps free users working, so trial_ends_at is legacy.
+ */
+export function isFreePlan(fact: DashboardFact): boolean {
+  return freePlans.has(fact.plan?.trim().toLowerCase() ?? '') && !payingStatuses.has(fact.status.toLowerCase())
+}
+
 export function factState(fact: DashboardFact, now: Date): FactState {
+  if (isFreePlan(fact)) return 'inactive'
   const expiry = effectiveExpiry(fact)
   if (expiry && !Number.isFinite(Date.parse(expiry))) return 'inconsistent'
   if (expiry && Date.parse(expiry) <= now.getTime()) return 'expired'
@@ -63,7 +75,7 @@ export function summarizeSubscriptionHealth(facts: DashboardFact[], now: Date): 
 
     const state = factState(fact, now)
     if (state === 'expired' || state === 'inconsistent') expiredOrInconsistent++
-    if (!effectiveExpiry(fact)) withoutExpiry++
+    if (!isFreePlan(fact) && !effectiveExpiry(fact)) withoutExpiry++
     if (state === 'valid' || state === 'expiring') valid++
     if (state === 'expiring') expiringSoon++
   }

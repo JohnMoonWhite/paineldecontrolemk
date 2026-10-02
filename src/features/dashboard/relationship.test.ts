@@ -20,7 +20,12 @@ describe('relationship', () => {
 
   it('separates running trials from trials that ended without payment', () => {
     expect(relationship(fact({ status: 'trialing', period_end_at: null, trial_end_at: '2026-10-05T00:00:00Z' }), now)).toBe('trial')
-    expect(relationship(fact({ status: 'trialing', plan: 'gratuito', period_end_at: null, trial_end_at: '2026-07-26T00:00:00Z' }), now)).toBe('trial-expired')
+    expect(relationship(fact({ status: 'trialing', plan: 'empresas', period_end_at: null, trial_end_at: '2026-07-26T00:00:00Z' }), now)).toBe('trial-expired')
+  })
+
+  it('treats the free plan as its own situation, whatever its old trial date says', () => {
+    expect(relationship(fact({ status: 'trialing', plan: 'gratuito', period_end_at: null, trial_end_at: '2026-07-26T00:00:00Z' }), now)).toBe('free')
+    expect(relationship(fact({ status: 'trialing', plan: 'gratuito', period_end_at: null, trial_end_at: '2026-12-26T00:00:00Z' }), now)).toBe('free')
   })
 
   it('marks as former subscriber whoever paid and no longer has a valid subscription', () => {

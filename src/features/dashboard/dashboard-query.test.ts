@@ -43,4 +43,10 @@ describe('summarizeSubscriptionHealth', () => {
   it('does not carry source emails into the dashboard model', () => {
     expect(JSON.stringify(facts)).not.toContain('email')
   })
+
+  it('leaves free-plan records out of validity counts', () => {
+    const free = { external_id: 'free-1', entity_kind: 'individual' as const, display_name: 'Grátis', plan: 'gratuito', status: 'trialing', period_end_at: null, trial_end_at: '2026-07-26T00:00:00.000Z', seat_count: null, provider: null }
+    const health = summarizeSubscriptionHealth([free], new Date('2026-09-29T00:00:00.000Z'))
+    expect(health).toEqual(expect.objectContaining({ valid: 0, expiredOrInconsistent: 0, withoutExpiry: 0, individuals: 1 }))
+  })
 })
