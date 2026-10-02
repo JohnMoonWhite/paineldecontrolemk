@@ -1,52 +1,48 @@
-import { useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
-import { currentPushState, disablePush, enablePush, type PushState } from '../../lib/push'
-import { getSupabaseClient } from '../../lib/supabase'
+import type { PushNotifications } from './usePushNotifications'
 
-const labels: Record<Exclude<PushState, 'unsupported'>, string> = {
+const installHint = 'No iPhone, toque em Compartilhar › Adicionar à Tela de Início e abra o MKHub por lá para receber notificações.'
+
+const bellLabels = {
   off: 'Ativar notificações',
   on: 'Notificações ativas',
   denied: 'Notificações bloqueadas',
   'needs-install': 'Instale o app para receber notificações',
-}
+} as const
 
-const hints: Partial<Record<PushState, string>> = {
+const bellHints = {
+  off: 'Receba cada pagamento e lançamento neste aparelho.',
   on: 'Toque para parar de receber notificações neste aparelho.',
   denied: 'Libere as notificações deste site nas configurações do navegador ou do celular.',
-  'needs-install': 'No iPhone, toque em Compartilhar › Adicionar à Tela de Início e abra o MKHub por lá.',
-}
+  'needs-install': installHint,
+} as const
 
-/** Bell in the header: subscribes this device to payment and ledger notifications. */
-export function NotificationToggle() {
-  const [state, setState] = useState<PushState | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-
-  useEffect(() => { void currentPushState().then(setState).catch(() => setState('unsupported')) }, [])
-
+/** Header bell: shows and switches the notification state of this device. */
+export function NotificationToggle({ push }: { push: PushNotifications }) {
+  const { state, busy, message, toggle, setMessage } = push
   if (!state || state === 'unsupported') return null
 
-  async function toggle() {
-    const client = getSupabaseClient()
-    if (!client) return
-    setBusy(true); setMessage(null)
-    try {
-      if (state === 'on') { await disablePush(client); setState('off') }
-      else { await enablePush(client); setState('on') }
-    } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : 'Não foi possível alterar as notificações.')
-      setState(await currentPushState().catch(() => 'off' as const))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const label = labels[state]
   return <div className="push-toggle">
-    <button className={`nav-link push-button push-button--${state}`} type="button" disabled={busy || state === 'denied'} title={hints[state] ?? label}
-      aria-label={label} onClick={() => state === 'needs-install' ? setMessage(hints['needs-install']!) : void toggle()}>
-      <Icon name="bell" /><span>{busy ? 'Aguarde…' : label}</span>
+    <button className={`nav-link push-button push-button--${state}`} type="button" disabled={busy || state === 'denied'} title={bellHints[state]}
+      aria-label={bellLabels[state]} onClick={() => state === 'needs-install' ? setMessage(installHint) : void toggle()}>
+      <Icon name="bell" /><span>{busy ? 'Aguarde…' : bellLabels[state]}</span>
     </button>
     {message ? <p className="push-message" role="status">{message}</p> : null}
+  </div>
+}
+
+/** Card at the top of the dashboard until the device has notifications or the user says no. */
+export function PushInvite({ push }: { push: PushNotifications }) {
+  const { state, busy, dismissed, toggle, dismiss } = push
+  if (dismissed || (state !== 'off' && state !== 'needs-install')) return null
+
+  return <div className="push-invite">
+    <Icon name="bell" />
+    <div>
+      <strong>Receba no celular cada pagamento e lançamento</strong>
+      <p>{state === 'needs-install' ? installHint : 'As notificações chegam mesmo com o app fechado. Ative uma vez em cada aparelho.'}</p>
+    </div>
+    {state === 'off' ? <button className="primary-button" type="button" disabled={busy} onClick={() => void toggle()} aria-label="Ativar notificações">{busy ? 'Aguarde…' : 'Ativar notificações'}</button> : null}
+    <button className="text-button" type="button" onClick={dismiss}>Agora não</button>
   </div>
 }

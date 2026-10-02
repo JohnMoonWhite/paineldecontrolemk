@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Brand } from '../../components/Brand'
-import { NotificationToggle } from '../app/NotificationToggle'
+import { NotificationToggle, PushInvite } from '../app/NotificationToggle'
+import { usePushNotifications, type PushNotifications } from '../app/usePushNotifications'
 import { Icon } from '../../components/Icon'
 import { CompanyCashPanel, type NewLedgerEntry } from './CompanyCashPanel'
 import { FinancePanel } from './FinancePanel'
@@ -18,19 +19,21 @@ const sourceLabels = { healthy: 'Em dia', warning: 'Atenção', stale: 'Desatual
 
 export function ExecutiveDashboard({ onSignOut }: { onSignOut: () => void }) {
   const data = useDashboard()
+  const push = usePushNotifications()
   const withClient = async (action: (client: NonNullable<ReturnType<typeof getSupabaseClient>>) => Promise<void>) => {
     const client = getSupabaseClient()
     if (!client) throw new Error('A conexão do painel não está configurada.')
     await action(client)
     await data.refresh()
   }
-  return <DashboardView {...data} onSignOut={onSignOut}
+  return <DashboardView {...data} onSignOut={onSignOut} push={push}
     onAddEntry={entry => withClient(client => addLedgerEntry(client, entry))}
     onRemoveEntry={entryId => withClient(client => removeLedgerEntry(client, entryId))} />
 }
 
-export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt, now, syncNow, onSignOut, onAddEntry = async () => {}, onRemoveEntry = async () => {} }: ReturnType<typeof useDashboard> & {
+export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt, now, syncNow, onSignOut, onAddEntry = async () => {}, onRemoveEntry = async () => {}, push }: ReturnType<typeof useDashboard> & {
   onSignOut: () => void
+  push?: PushNotifications
   onAddEntry?: (entry: NewLedgerEntry) => Promise<void>
   onRemoveEntry?: (entryId: string) => Promise<void>
 }) {
@@ -67,7 +70,7 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
         <a className="nav-link" href="#finance"><Icon name="subscriptions" />Receita</a>
         <a className="nav-link" href="#subscriptions"><Icon name="subscriptions" />Assinaturas</a>
       </nav>
-      <NotificationToggle />
+      {push ? <NotificationToggle push={push} /> : null}
       <button className="nav-link signout-button" onClick={onSignOut} type="button"><Icon name="logout" /><span>Sair da conta</span></button>
     </header>
     <main className="dashboard-main">
@@ -75,6 +78,7 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
         <section id="overview" className="overview-section">
           <div className="dashboard-header"><div className="executive-heading"><p className="date-label">{now.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p><h1>Resumo executivo</h1><p className="dashboard-lead">Seus projetos. A visão completa.</p><span className="read-only"><Icon name="shield" />Consulta às origens somente para leitura</span></div><div className="executive-brand"><img src="/brand/mkhub.png" alt="MKHUB — Controle, gestão e resultados" width="1536" height="1024" /></div></div>
           <div className="overview-toolbar"><label className="source-filter">Projeto<select value={sourceId} onChange={event => setSourceId(event.target.value)}><option value="all">Todos os projetos</option>{sources.map(source => <option key={source.id} value={source.id}>{source.name}</option>)}</select></label><div className="refresh-controls"><p className="update-status" aria-live="polite">{updatedAt ? `Painel consultado às ${updatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Aguardando consulta'}<span>Atualização a cada 5 minutos</span></p><button className="secondary-button refresh-button" disabled={refreshing || syncing} onClick={() => void syncNow()} type="button"><Icon name="refresh" className={refreshing || syncing ? 'spinning' : ''} />{syncing ? 'Coletando dados…' : refreshing ? 'Atualizando…' : 'Atualizar agora'}</button></div></div>
+          {push ? <PushInvite push={push} /> : null}
           {error ? <div className="notice notice--error" role="alert"><Icon name="alert" /><div><strong>Não foi possível atualizar</strong><p>{error}</p>{snapshot ? <p>Os dados abaixo são da última consulta bem-sucedida.</p> : null}</div></div> : null}
           {snapshot && needsAttention ? <div className="notice"><Icon name="alert" /><div><strong>{hasData ? 'Alguns projetos precisam de atenção' : 'Aguardando a primeira coleta de dados'}</strong><p>{hasData ? 'Confira a última sincronização de cada projeto antes de tomar uma decisão.' : 'A conexão foi cadastrada, mas ainda não há uma sincronização bem-sucedida. Os indicadores ficarão disponíveis após a coleta.'}</p></div><a href="#projects" aria-label="Ver estado dos projetos"><Icon name="arrow" /></a></div> : null}
           <SubscriptionHealth health={health} available={hasData} loading={!snapshot && !error} />

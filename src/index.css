@@ -263,6 +263,11 @@ td strong { font-weight: 650; color: #f2f5fa; }
 .push-button--on { color: var(--cyan); }
 .push-button--denied { opacity: .6; }
 .push-message { position: absolute; z-index: 40; top: calc(100% - 6px); right: 0; width: min(300px, calc(100vw - 32px)); margin: 0; padding: 12px 14px; border: 1px solid #2f5866; border-radius: 10px 2px 10px 2px; background: #0f1a22; color: #d6e6ef; font-size: .76rem; line-height: 1.55; box-shadow: 0 14px 40px #0009; }
+.push-invite { display: flex; align-items: center; gap: 16px; padding: 16px 20px; margin-bottom: 24px; border: 1px solid #2f5866; border-radius: 14px 4px 14px 4px; background: linear-gradient(135deg, #0f2a33, #12141c 60%); }
+.push-invite > .icon { width: 22px; color: var(--cyan); }
+.push-invite > div { flex: 1; min-width: 0; }
+.push-invite strong { font-size: .9rem; }
+.push-invite p { margin: 4px 0 0; color: #b9c6d4; font-size: .8rem; line-height: 1.6; }
 .skip-link { position: fixed; top: -100px; left: 20px; z-index: 100; background: var(--cyan); color: #000; padding: 12px; }
 .skip-link:focus { top: 20px; }
 .spinning { animation: spin 1.2s linear infinite; }
@@ -341,6 +346,9 @@ td strong { font-weight: 650; color: #f2f5fa; }
   .auth-content { max-width: none; padding: 34px; }
 }
 @media (max-width: 520px) {
+  .push-invite { flex-wrap: wrap; align-items: flex-start; padding: 16px; gap: 12px; }
+  .push-invite > div { flex-basis: calc(100% - 40px); }
+  .push-invite .primary-button { flex: 1; }
   .push-button span { display: none; }
   .brand--compact .brand-lockup { height: 26px; }
   .brand-caption { font-size: .66rem; }
