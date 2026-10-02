@@ -41,4 +41,13 @@ describe('SubscriptionTable', () => {
     expect(screen.getByText('Cliente Pix')).toBeVisible()
     expect(screen.queryByText('Ex Cliente')).not.toBeInTheDocument()
   })
+
+  it('tags active subscriptions that expire within seven days', () => {
+    const soon = { ...base, external_id: 'soon', display_name: 'Vence Logo', status: 'active', period_end_at: '2026-10-04T12:00:00Z', payment_method: 'pix', payments_count: 1 }
+    render(<SubscriptionTable facts={[...facts, soon]} sources={sources} now={now} />)
+
+    expect(within(screen.getByText('Vence Logo').closest('tr')!).getByText('Vence em breve')).toBeVisible()
+    expect(within(screen.getByText('Cliente Pix').closest('tr')!).queryByText('Vence em breve')).not.toBeInTheDocument()
+    expect(within(screen.getByText('Ex Cliente').closest('tr')!).queryByText('Vence em breve')).not.toBeInTheDocument()
+  })
 })

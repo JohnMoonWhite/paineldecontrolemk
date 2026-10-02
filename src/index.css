@@ -223,6 +223,7 @@ h2 { font-size: 1.35rem; line-height: 1.3; font-weight: 600; letter-spacing: -.0
 .cash-remove { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid transparent; border-radius: 6px; color: #8a94a8; background: transparent; font-size: 1.2rem; line-height: 1; }
 button.cash-remove:hover { color: #ffb2ca; border-color: #70364c; background: #321e2c; }
 .cell-status { white-space: nowrap; }
+.cell-status .status-badge + .status-badge { margin-left: 6px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 /* Panels sit in grid and block flows; without this a wide child stretches the whole page on phones. */
 .dashboard-content > *, .business-grid > *, .panel { min-width: 0; }
@@ -257,6 +258,11 @@ td strong { font-weight: 650; color: #f2f5fa; }
 .update-banner span { display: block; margin-top: 2px; color: var(--muted); font-size: .75rem; }
 .update-banner .text-button { padding: 6px 4px; font-size: .8rem; }
 @keyframes update-in { from { opacity: 0; transform: translate(-50%, 16px); } }
+.push-toggle { position: relative; display: flex; align-self: stretch; }
+.push-button { gap: 8px; }
+.push-button--on { color: var(--cyan); }
+.push-button--denied { opacity: .6; }
+.push-message { position: absolute; z-index: 40; top: calc(100% - 6px); right: 0; width: min(300px, calc(100vw - 32px)); margin: 0; padding: 12px 14px; border: 1px solid #2f5866; border-radius: 10px 2px 10px 2px; background: #0f1a22; color: #d6e6ef; font-size: .76rem; line-height: 1.55; box-shadow: 0 14px 40px #0009; }
 .skip-link { position: fixed; top: -100px; left: 20px; z-index: 100; background: var(--cyan); color: #000; padding: 12px; }
 .skip-link:focus { top: 20px; }
 .spinning { animation: spin 1.2s linear infinite; }
@@ -295,7 +301,8 @@ td strong { font-weight: 650; color: #f2f5fa; }
   .subscriptions-panel tbody tr:hover { background: none; }
   .subscriptions-panel td { padding: 0; border: 0; max-width: none; }
   .subscriptions-panel td.cell-customer { grid-column: 1; grid-row: 1; }
-  .subscriptions-panel td.cell-status { grid-column: 2; grid-row: 1; justify-self: end; }
+  .subscriptions-panel td.cell-status { grid-column: 2; grid-row: 1; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .subscriptions-panel .cell-status .status-badge + .status-badge { margin-left: 0; }
   .subscriptions-panel td[data-label='Pagamento'] { grid-column: 1 / -1; }
   .subscriptions-panel td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 4px; color: #8f9ab0; font-size: .66rem; letter-spacing: .07em; text-transform: uppercase; }
   .finance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 26px; }
@@ -303,6 +310,8 @@ td strong { font-weight: 650; color: #f2f5fa; }
   .masthead { flex-wrap: wrap; gap: 0; padding: 20px 24px 0; }
   .masthead nav { width: 100%; order: 2; justify-content: space-between; margin: 16px 0 0; gap: 18px; }
   .signout-button { margin-left: auto; padding: 10px 0; }
+  .push-toggle { margin-left: auto; }
+  .push-toggle + .signout-button { margin-left: 18px; }
   .dashboard-content { padding: 0 24px 20px; }
   .dashboard-header { min-height: 230px; grid-template-columns: 1.2fr 1fr; }
   .dashboard-header h1 { font-size: 2.4rem; }
@@ -332,6 +341,7 @@ td strong { font-weight: 650; color: #f2f5fa; }
   .auth-content { max-width: none; padding: 34px; }
 }
 @media (max-width: 520px) {
+  .push-button span { display: none; }
   .brand--compact .brand-lockup { height: 26px; }
   .brand-caption { font-size: .66rem; }
   .update-banner { flex-wrap: wrap; gap: 10px 12px; }

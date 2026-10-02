@@ -1,4 +1,4 @@
-type Name = 'overview' | 'projects' | 'subscriptions' | 'shield' | 'refresh' | 'logout' | 'search' | 'alert' | 'arrow' | 'finance'
+type Name = 'overview' | 'projects' | 'subscriptions' | 'shield' | 'refresh' | 'logout' | 'search' | 'alert' | 'arrow' | 'finance' | 'bell'
 const paths: Record<Name, React.ReactNode> = {
   overview: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
   projects: <><path d="M3 7h7l2 2h9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M3 7V5a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v2" /></>,
@@ -10,6 +10,7 @@ const paths: Record<Name, React.ReactNode> = {
   alert: <><path d="m12 3 10 18H2zM12 9v5M12 17h.01" /></>,
   arrow: <><path d="M5 12h14m-6-6 6 6-6 6" /></>,
   finance: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></>,
+  bell: <><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20a2 2 0 0 0 4 0" /></>,
 }
 export function Icon({ name, className = '' }: { name: Name; className?: string }) {
   return <svg className={`icon ${className}`} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>

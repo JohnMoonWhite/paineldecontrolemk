@@ -8,6 +8,7 @@ export default defineConfig({
     VitePWA({
       // The app shows an "update available" prompt instead of switching versions silently.
       registerType: 'prompt',
+      workbox: { importScripts: ['push-sw.js'] },
       includeAssets: ['icons/favicon-32.png', 'icons/favicon-48.png', 'icons/apple-touch-icon.png', 'brand/mkhub.png', 'brand/mkhub-lockup.png'],
       manifest: {
         name: 'MKHUB | Painel de controle',

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Brand } from '../../components/Brand'
+import { NotificationToggle } from '../app/NotificationToggle'
 import { Icon } from '../../components/Icon'
 import { CompanyCashPanel, type NewLedgerEntry } from './CompanyCashPanel'
 import { FinancePanel } from './FinancePanel'
@@ -66,6 +67,7 @@ export function DashboardView({ snapshot, error, refreshing, syncing, updatedAt,
         <a className="nav-link" href="#finance"><Icon name="subscriptions" />Receita</a>
         <a className="nav-link" href="#subscriptions"><Icon name="subscriptions" />Assinaturas</a>
       </nav>
+      <NotificationToggle />
       <button className="nav-link signout-button" onClick={onSignOut} type="button"><Icon name="logout" /><span>Sair da conta</span></button>
     </header>
     <main className="dashboard-main">

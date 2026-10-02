@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Icon } from '../../components/Icon'
-import { effectiveExpiry, type DashboardFact } from './dashboard-query'
+import { effectiveExpiry, factState, type DashboardFact } from './dashboard-query'
 import type { Source } from './dashboard-data'
 import { paymentMethodLabel, relationship, relationshipLabels, type Relationship } from './relationship'
 
@@ -15,6 +15,12 @@ function formatDate(value: string | null) {
   if (!value) return 'Não informada'
   const date = new Date(value)
   return Number.isFinite(date.getTime()) ? date.toLocaleDateString('pt-BR') : 'Data inválida'
+}
+
+/** An active subscription whose due date falls within the next seven days. */
+function expiresSoon(fact: DashboardFact, now: Date) {
+  const state = relationship(fact, now)
+  return (state === 'subscriber' || state === 'cancelling') && factState(fact, now) === 'expiring'
 }
 
 function relativeExpiry(value: string | null, now: Date): string | null {
@@ -42,7 +48,7 @@ export function SubscriptionTable({ facts, sources, now }: { facts: DashboardFac
   const [page, setPage] = useState(0)
   const filtering = Boolean(search) || filter !== 'all' || payment !== 'all'
   const filtered = facts.filter(fact => {
-    const matchesRelationship = filter === 'all' || relationship(fact, now) === filter
+    const matchesRelationship = filter === 'all' || (filter === 'expiring' ? expiresSoon(fact, now) : relationship(fact, now) === filter)
     const method = fact.payment_method?.toLowerCase() ?? 'none'
     const matchesPayment = payment === 'all' || method === payment
     return matchesRelationship && matchesPayment && `${fact.display_name ?? ''} ${fact.external_id} ${fact.plan ?? ''}`.toLocaleLowerCase('pt-BR').includes(search.trim().toLocaleLowerCase('pt-BR'))
@@ -57,7 +63,7 @@ export function SubscriptionTable({ facts, sources, now }: { facts: DashboardFac
     <div className="section-heading"><div><h2 id="subscriptions-title">Assinaturas em detalhe</h2><p>Situação de cada cliente, validade e forma de pagamento</p></div><span className="count-label">{filtered.length} registros</span></div>
     <div className="table-toolbar">
       <label className="search-field"><Icon name="search" /><input type="search" aria-label="Buscar assinatura" placeholder="Buscar por nome, identificador ou plano" value={search} onChange={event => { setSearch(event.target.value); setPage(0) }} /></label>
-      <label className="status-filter"><span>Situação</span><select value={filter} onChange={event => { setFilter(event.target.value); setPage(0) }}><option value="all">Todas as situações</option>{(Object.entries(relationshipLabels) as [Relationship, string][]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+      <label className="status-filter"><span>Situação</span><select value={filter} onChange={event => { setFilter(event.target.value); setPage(0) }}><option value="all">Todas as situações</option><option value="expiring">Vence em breve (7 dias)</option>{(Object.entries(relationshipLabels) as [Relationship, string][]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <label className="status-filter"><span>Pagamento</span><select value={payment} onChange={event => { setPayment(event.target.value); setPage(0) }}><option value="all">Todas as formas</option>{paymentFilters.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
     </div>
     {visible.length ? <><div className="table-scroll"><table><thead><tr><th>Cliente</th><th>Projeto / plano</th><th>Situação</th><th>Vencimento</th><th>Pagamento</th></tr></thead><tbody>{visible.map(fact => {
@@ -71,7 +77,7 @@ export function SubscriptionTable({ facts, sources, now }: { facts: DashboardFac
       return <tr key={`${fact.source_id}:${fact.entity_kind}:${fact.external_id}`}>
         <td className="cell-customer" title={`Identificador: ${fact.external_id}`}><strong>{fact.display_name || fact.external_id}</strong><span className="table-secondary">{kind}</span></td>
         <td data-label="Projeto">{sources.find(source => source.id === fact.source_id)?.name ?? 'Projeto não identificado'}<span className="table-secondary">{fact.plan ?? 'Plano não informado'}</span></td>
-        <td className="cell-status"><span className={`status-badge status-badge--${relationshipBadges[state]}`} title={`Status na origem: ${fact.status}`}>{relationshipLabels[state]}</span></td>
+        <td className="cell-status"><span className={`status-badge status-badge--${relationshipBadges[state]}`} title={`Status na origem: ${fact.status}`}>{relationshipLabels[state]}</span>{expiresSoon(fact, now) ? <span className="status-badge status-badge--expiring">Vence em breve</span> : null}</td>
         <td data-label="Vencimento">{formatDate(expiry)}{relative ? <span className="table-secondary">{relative}</span> : null}</td>
         <td data-label="Pagamento">{paymentMethodLabel(fact.payment_method)}{history ? <span className="table-secondary">{history}</span> : null}</td>
       </tr>
