@@ -26,7 +26,7 @@ export async function enablePush(client: SupabaseClient): Promise<void> {
   const registration = await navigator.serviceWorker.ready
   const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(publicKey) })
   const json = subscription.toJSON()
-  const saved = await client.rpc('save_push_subscription', { p_endpoint: json.endpoint, p_p256dh: json.keys?.p256dh, p_auth: json.keys?.auth })
+  const saved = await client.rpc('save_push_subscription', { p_endpoint: json.endpoint, p_p256dh: json.keys?.p256dh, p_auth: json.keys?.auth, p_user_agent: navigator.userAgent })
   if (saved.error) {
     await subscription.unsubscribe()
     throw new Error('Não foi possível salvar este aparelho. Tente novamente.')
